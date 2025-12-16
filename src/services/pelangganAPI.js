@@ -10,7 +10,12 @@ export async function getAllPelanggan() {
     const res = await axiosInstance.get("/pelanggan");
     return res.data;
   } catch (err) {
-    console.error("Gagal ambil data pelanggan:", err);
+    if (err?.response?.status === 403) {
+      // Role tidak diizinkan
+      return [];
+    }
+    // Hindari spam error; kembalikan [] supaya UI tetap jalan
+    console.warn("Gagal ambil data pelanggan:", err?.response?.data || err.message);
     return [];
   }
 }

@@ -5,6 +5,8 @@ import { getAllPelanggan } from '../services/pelangganAPI';
 import { getAllPembayaran } from '../services/pembayaranAPI';
 import { listPengiriman } from '../services/pengirimanAPI';
 import { listTransaksi } from '../services/transaksiAPI';
+import { getSaldoProduk, getMutasiByProduk } from '../services/stokAPI';
+import { getBestSellers } from '../services/laporanAPI';
 import { decodeJWT } from '../utils/jwtDecode';
 import Card from '../components/Card'
 import RecentActivity from '../components/RecentActivity'
@@ -36,12 +38,13 @@ const ModernDashboard = () => {
     try {
       // Kurangi panggilan API yang di-forbid berdasarkan role
       const isDriver = user.role === 'driver'
+      const isGudang = user.role === 'gudang'
       let [produk, pelanggan, pembayaran, pengiriman, transaksi] = await Promise.all([
         getAllProduk().catch(() => []),
-        getAllPelanggan().catch(() => []),
-        isDriver ? Promise.resolve([]) : getAllPembayaran().catch(() => []),
-        listPengiriman().catch(() => []),
-        isDriver ? Promise.resolve([]) : listTransaksi().catch(() => [])
+        isGudang ? Promise.resolve([]) : getAllPelanggan().catch(() => []),
+        (isDriver || isGudang) ? Promise.resolve([]) : getAllPembayaran().catch(() => []),
+        isGudang ? Promise.resolve([]) : listPengiriman().catch(() => []),
+        (isDriver || isGudang) ? Promise.resolve([]) : listTransaksi().catch(() => [])
       ])
       // Defensive: if null, set to []
       produk = Array.isArray(produk) ? produk : [];
@@ -219,6 +222,98 @@ const ModernDashboard = () => {
         driverKPI.pengirimanAktif = shipDriver.filter(p => String(p.status || '').toLowerCase() !== 'selesai').length
       }
 
+      // Gudang KPI: hitung via saldo stok dan mutasi (bukan field stok produk)
+      const produkList = Array.isArray(produk) ? produk : []
+      const threshold = 5
+      let lowStock = []
+      let stockUpdatesToday = []
+      let gudangSaldoMap = {}
+      let produkTerlarisGudang = []
+      if (isGudang) {
+        // Ambil saldo per produk dan mutasi untuk akurasi dashboard gudang
+        const todayDate = new Date()
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(todayDate.getDate() - 7)
+        const entries = await Promise.all(
+          produkList.map(async (p) => {
+            const id = p.id || p._id || p.ID
+            try {
+              const saldo = await getSaldoProduk(id)
+              return [id, saldo?.saldo ?? (p.stok ?? 0)]
+            } catch {
+              return [id, p.stok ?? 0]
+            }
+          })
+        )
+        gudangSaldoMap = Object.fromEntries(entries)
+
+        // Tentukan low stock berdasarkan saldo terkini
+        lowStock = produkList.filter((p) => {
+          const id = p.id || p._id || p.ID
+          const saldo = Number(gudangSaldoMap[id] ?? 0)
+          return saldo <= threshold
+        })
+
+        // Kumpulkan mutasi per produk sekali, lalu turunkan metrik yang dibutuhkan
+        const mutasiEntries = await Promise.all(
+          produkList.map(async (p) => {
+            const id = p.id || p._id || p.ID
+            try {
+              const list = await getMutasiByProduk(id)
+              return [id, Array.isArray(list) ? list : []]
+            } catch {
+              return [id, []]
+            }
+          })
+        )
+        const mutasiMap = Object.fromEntries(mutasiEntries)
+
+        // Update stok hari ini: produk yang memiliki mutasi pada hari ini
+        const todayKey = todayDate.toDateString()
+        stockUpdatesToday = produkList.filter((p) => {
+          const id = p.id || p._id || p.ID
+          const list = mutasiMap[id] || []
+          return list.some((m) => {
+            const d = m?.created_at ? new Date(m.created_at) : null
+            return d && d.toDateString() === todayKey
+          })
+        })
+
+        // Produk terlaris: coba ambil dari endpoint laporan (transaksi), fallback ke mutasi keluar 7 hari
+        let fromAPI = []
+        try {
+          fromAPI = await getBestSellers(7)
+        } catch { /* ignore */ }
+        if (Array.isArray(fromAPI) && fromAPI.length > 0) {
+          produkTerlarisGudang = fromAPI.map((x) => ({ nama: x.nama || x.produk_id, jumlah: x.jumlah || 0 }))
+        } else {
+          // Fallback: mutasi keluar 7 hari terakhir
+          const produkNameMap = {}
+          produkList.forEach(p => { const id = p.id || p._id || p.ID; produkNameMap[id] = p.nama_produk || id })
+          const countKeluar = {}
+          produkList.forEach((p) => {
+            const id = p.id || p._id || p.ID
+            const list = mutasiMap[id] || []
+            const totalKeluar7Hari = list.reduce((acc, m) => {
+              if (String(m?.jenis).toLowerCase() !== 'keluar') return acc
+              const d = m?.created_at ? new Date(m.created_at) : null
+              if (!d) return acc
+              if (d >= sevenDaysAgo && d <= todayDate) {
+                return acc + Number(m.jumlah || 0)
+              }
+              return acc
+            }, 0)
+            if (totalKeluar7Hari > 0) {
+              countKeluar[id] = (countKeluar[id] || 0) + totalKeluar7Hari
+            }
+          })
+          produkTerlarisGudang = Object.entries(countKeluar)
+            .map(([pid, jumlah]) => ({ nama: produkNameMap[pid] || pid, jumlah }))
+            .sort((a, b) => b.jumlah - a.jumlah)
+            .slice(0, 5)
+        }
+      }
+
       setStats({
         totalProduk: produk.length,
         totalPelanggan: pelanggan.length,
@@ -227,11 +322,15 @@ const ModernDashboard = () => {
         totalOngkir: totalOngkirFiltered,
         pembayaranHariIni,
         transaksiHariIni,
-        produkTerlaris,
+        produkTerlaris: isGudang ? produkTerlarisGudang : produkTerlaris,
         driverPendapatanHariIni,
         driverKPI,
         pendapatanMingguIni: pendapatanTokoMingguIni,
-        produkTerjualHariIni
+        produkTerjualHariIni,
+        gudangThreshold: threshold,
+        gudangLowStock: lowStock,
+        gudangStockUpdatesToday: stockUpdatesToday,
+        gudangSaldoMap
       })
     } catch (error) {
       console.error("Error fetching stats:", error)
@@ -338,7 +437,11 @@ const ModernDashboard = () => {
     }
   ]
   // Sembunyikan kartu tertentu untuk role driver
-  const displayedStatsCards = user.role === 'driver' ? [] : statsCards
+  const displayedStatsCards = user.role === 'driver'
+    ? []
+    : user.role === 'gudang'
+    ? statsCards.filter(card => card.title === 'Total Produk')
+    : statsCards
   // Khusus kasir: tampilkan KPI kasir
   const KasirSection = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -403,6 +506,72 @@ const ModernDashboard = () => {
         </div>
         <p className="text-2xl font-bold text-gray-900">{stats?.driverKPI?.pengirimanAktif || 0}</p>
         <p className="text-sm text-gray-500">Belum selesai</p>
+      </Card>
+    </div>
+  )
+
+  // Khusus gudang: tampilkan KPI stok
+  const GudangSection = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Produk Stok Kritis</h2>
+            <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{stats?.gudangLowStock?.length || 0}</p>
+          <p className="text-sm text-gray-500">Stok ≤ {stats?.gudangThreshold}</p>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Update Stok Hari Ini</h2>
+            <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{stats?.gudangStockUpdatesToday?.length || 0}</p>
+          <p className="text-sm text-gray-500">Produk dengan perubahan stok</p>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Total Produk</h2>
+            <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{stats.totalProduk}</p>
+          <p className="text-sm text-gray-500">Semua produk terdata</p>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Daftar Restock</h2>
+          <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        {stats?.gudangLowStock?.length ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rekomendasi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stats.gudangLowStock.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">{p.nama || p.nama_produk || p.id}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{(stats?.gudangSaldoMap && (stats.gudangSaldoMap[p.id] ?? stats.gudangSaldoMap[p._id] ?? stats.gudangSaldoMap[p.ID])) ?? (p.stok ?? p.stock ?? 0)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">Restock ke {(() => { const sid = p.id || p._id || p.ID; const saldo = Number((stats?.gudangSaldoMap && (stats.gudangSaldoMap[sid])) ?? (p.stok ?? p.stock ?? 0)); return Math.max(saldo, stats.gudangThreshold) + 10; })()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <ShoppingBagIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500">Tidak ada produk stok kritis</p>
+          </div>
+        )}
       </Card>
     </div>
   )
@@ -497,6 +666,11 @@ const ModernDashboard = () => {
       {/* Driver section */}
       {user.role === 'driver' && (
         <DriverSection />
+      )}
+
+      {/* Gudang section */}
+      {user.role === 'gudang' && (
+        <GudangSection />
       )}
 
       {/* Charts Section */}

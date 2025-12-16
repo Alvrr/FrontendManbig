@@ -5,7 +5,10 @@ export const listPengiriman = async () => {
     const res = await api.get('/pengiriman');
     return res.data;
   } catch (err) {
-    console.error('Gagal ambil data pengiriman:', err);
+    if (err?.response?.status === 403) {
+      return [];
+    }
+    console.warn('Gagal ambil data pengiriman:', err?.response?.data || err.message);
     return [];
   }
 };
