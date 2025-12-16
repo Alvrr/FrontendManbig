@@ -4,7 +4,13 @@ import { id } from "date-fns/locale"
 import Swal from 'sweetalert2'
 import { decodeJWT } from "../utils/jwtDecode"
 import { getAllPembayaran } from "../services/pembayaranAPI"
+import { listTransaksi } from "../services/transaksiAPI"
+import { listPengiriman } from "../services/pengirimanAPI"
 import { getAllPelanggan } from "../services/pelangganAPI"
+import { getAllKaryawan } from "../services/karyawanAPI"
+import { getAllDrivers } from "../services/driverAPI"
+import { getAllProduk } from "../services/produkAPI"
+import { formatRupiah } from "../utils/currency"
 import PageWrapper from "../components/PageWrapper"
 import Card from "../components/Card"
 import { 
@@ -19,6 +25,9 @@ function Laporan() {
   const [transaksi, setTransaksi] = useState([])
   const [pelanggan, setPelanggan] = useState([])
   const [loading, setLoading] = useState(false)
+  const [karyawan, setKaryawan] = useState([])
+  const [drivers, setDrivers] = useState([])
+  const [produk, setProduk] = useState([])
   
   // Filter states
   const [filterType, setFilterType] = useState('all') // all, custom, month, year
@@ -59,12 +68,62 @@ function Laporan() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [transaksiData, pelangganData] = await Promise.all([
+      const [pembayaranData, pelangganData, trxData, shipData, karyawanData, driverData, produkData] = await Promise.all([
         getAllPembayaran(),
-        getAllPelanggan()
+        getAllPelanggan(),
+        listTransaksi(),
+        listPengiriman().catch(() => []),
+        getAllKaryawan().catch(() => []),
+        getAllDrivers().catch(() => []),
+        getAllProduk().catch(() => [])
       ])
-      
-      setTransaksi(Array.isArray(transaksiData) ? transaksiData : [])
+
+      setKaryawan(Array.isArray(karyawanData) ? karyawanData : (karyawanData?.data || []))
+      setDrivers(Array.isArray(driverData) ? driverData : (driverData?.data || []))
+      setProduk(Array.isArray(produkData) ? produkData : (produkData?.data || []))
+
+      const karyawanMap = new Map((Array.isArray(karyawanData) ? karyawanData : (karyawanData?.data || [])).map(u => [u.id, u.nama]))
+      const driverMap = new Map((Array.isArray(driverData) ? driverData : (driverData?.data || [])).map(d => [d.id, d.nama]))
+      const pelangganMap = new Map((Array.isArray(pelangganData) ? pelangganData : []).map(p => [p.id, p.nama]))
+      const produkMap = new Map((Array.isArray(produkData) ? produkData : (produkData?.data || [])).map(pr => [pr.id, pr]))
+
+      const trxMap = new Map((Array.isArray(trxData) ? trxData : []).map(t => [t.id, t]))
+      const shipByTrx = new Map()
+      ;(Array.isArray(shipData) ? shipData : []).forEach(s => {
+        if (!shipByTrx.has(s.transaksi_id)) shipByTrx.set(s.transaksi_id, s)
+      })
+
+      const rows = (Array.isArray(pembayaranData) ? pembayaranData : []).map(p => {
+        const trx = trxMap.get(p.transaksi_id) || {}
+        const ship = shipByTrx.get(p.transaksi_id) || {}
+        const ongkir = ship.ongkir || 0
+        const totalToko = Math.max(0, (p.total_bayar || 0) - ongkir)
+        return {
+          ...p,
+          tanggal: trx.created_at || p.created_at,
+          pelanggan_id: trx.pelanggan_id,
+          kasir_id: trx.kasir_id,
+          nama_pelanggan: pelangganMap.get(trx.pelanggan_id) || '',
+          nama_kasir: karyawanMap.get(trx.kasir_id) || trx.kasir_id,
+          nama_driver: driverMap.get(ship.driver_id) || ship.driver_id,
+          jenis_pengiriman: ship.jenis,
+          ongkir,
+          total_toko: totalToko,
+          produk: Array.isArray(trx.items) ? trx.items.map(it => ({
+            nama_produk: it.nama_produk || produkMap.get(it.produk_id)?.nama_produk || produkMap.get(it.produk_id)?.nama || it.produk_id,
+            id_produk: it.produk_id,
+            jumlah: it.jumlah,
+            harga: it.harga,
+            subtotal: (Number(it.harga)||0)*(Number(it.jumlah)||0)
+          })) : []
+        }
+      })
+
+      // Exclude specific IDs from report per request
+      const excludeIds = new Set(['PMB005', 'PMB004', 'PMB003', 'PMB002', 'PMB001'])
+      const filteredRows = rows.filter(r => !excludeIds.has(String(r.id)))
+
+      setTransaksi(filteredRows)
       setPelanggan(Array.isArray(pelangganData) ? pelangganData : [])
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -129,10 +188,10 @@ function Laporan() {
   // Statistics from filtered data
   const stats = {
     totalTransaksi: filteredData.length,
-    totalPendapatan: filteredData.reduce((sum, item) => sum + (item.total_bayar || 0), 0),
-    rataRataTransaksi: filteredData.length > 0 ? filteredData.reduce((sum, item) => sum + (item.total_bayar || 0), 0) / filteredData.length : 0,
-    transaksiSelesai: filteredData.filter(item => item.status === 'Selesai').length,
-    transaksiPending: filteredData.filter(item => item.status === 'Pending').length
+    totalPendapatan: filteredData.reduce((sum, item) => sum + (item.total_toko || 0), 0),
+    totalOngkir: filteredData.reduce((sum, item) => sum + (item.ongkir || 0), 0),
+    transaksiSelesai: filteredData.filter(item => (item.status || '').toLowerCase() === 'selesai').length,
+    transaksiPending: filteredData.filter(item => (item.status || '').toLowerCase() === 'pending').length
   }
 
   // Pagination
@@ -209,9 +268,11 @@ function Laporan() {
     ]
     const csvRows = [headers.join(',')]
 
+    const karyawanMap = new Map(karyawan.map(u => [u.id, u.nama]))
+    const driverMap = new Map(drivers.map(d => [d.id, d.nama]))
     filteredData.forEach(item => {
-      const pelangganDetail = pelanggan.find(p => p.id === item.id_pelanggan)
-      const pelangganNama = pelangganDetail?.nama || item.nama_pelanggan || 'N/A'
+      const pelangganDetail = pelanggan.find(p => p.id === (item.pelanggan_id || item.id_pelanggan))
+      const pelangganNama = pelangganDetail?.nama || item.nama_pelanggan || (item.pelanggan_id || '') || 'N/A'
       const tanggal = item.tanggal ? format(new Date(item.tanggal), "dd/MM/yyyy") : 'N/A'
       const waktu = item.tanggal ? format(new Date(item.tanggal), "HH:mm:ss") : 'N/A'
 
@@ -223,8 +284,8 @@ function Laporan() {
             tanggal,
             waktu,
             pelangganNama,
-            item.nama_kasir || 'N/A',
-            item.nama_driver || 'N/A',
+            item.nama_kasir || karyawanMap.get(item.kasir_id) || 'N/A',
+            item.nama_driver || driverMap.get(item.driver_id) || 'N/A',
             item.jenis_pengiriman || 'N/A',
             `"${produk.nama_produk || produk.id_produk || 'N/A'}"`,
             produk.jumlah || 0,
@@ -243,8 +304,8 @@ function Laporan() {
           tanggal,
           waktu,
           pelangganNama,
-          item.nama_kasir || 'N/A',
-          item.nama_driver || 'N/A',
+          item.nama_kasir || karyawanMap.get(item.kasir_id) || item.kasir_id || 'N/A',
+          item.nama_driver || driverMap.get(item.driver_id) || item.driver_id || 'N/A',
           item.jenis_pengiriman || 'N/A',
           'N/A',
           0,
@@ -287,12 +348,7 @@ function Laporan() {
     return 'Semua Data'
   }
 
-  const formatRupiah = (angka) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(angka)
-  }
+  // gunakan util bersama
 
   return (
     <PageWrapper 
@@ -310,7 +366,7 @@ function Laporan() {
       }
     >
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="col-span-1">
           <div className="flex items-center">
             <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
@@ -329,7 +385,7 @@ function Laporan() {
               <DocumentArrowDownIcon className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-3 min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-600 truncate">Total Pendapatan</p>
+              <p className="text-sm font-medium text-gray-600 truncate">Pendapatan Toko (tanpa ongkir)</p>
               <p className="text-sm font-semibold text-gray-900 leading-tight">{formatRupiah(stats.totalPendapatan)}</p>
             </div>
           </div>
@@ -337,15 +393,17 @@ function Laporan() {
 
         <Card className="col-span-1">
           <div className="flex items-center">
-            <div className="p-3 rounded-lg bg-purple-100 flex-shrink-0">
-              <CalendarIcon className="w-6 h-6 text-purple-600" />
+            <div className="p-3 rounded-lg bg-blue-100 flex-shrink-0">
+              <DocumentArrowDownIcon className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-3 min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-600 truncate">Rata-rata</p>
-              <p className="text-sm font-semibold text-gray-900 leading-tight">{formatRupiah(stats.rataRataTransaksi)}</p>
+              <p className="text-sm font-medium text-gray-600 truncate">Total Ongkir</p>
+              <p className="text-sm font-semibold text-gray-900 leading-tight">{formatRupiah(stats.totalOngkir)}</p>
             </div>
           </div>
         </Card>
+
+        {/* Kartu Rata-rata dihapus sesuai permintaan */}
 
         <Card className="col-span-1">
           <div className="flex items-center">
@@ -528,7 +586,7 @@ function Laporan() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedData.map((item) => {
-                    const pelangganDetail = pelanggan.find(p => p.id === item.id_pelanggan)
+                    const pelangganDetail = pelanggan.find(p => p.id === (item.pelanggan_id || item.id_pelanggan))
                     return (
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
@@ -539,7 +597,7 @@ function Laporan() {
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {pelangganDetail?.nama || item.nama_pelanggan || '-'}
+                          {pelangganDetail?.nama || item.nama_pelanggan || item.pelanggan_id || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_kasir || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_driver || '-'}</td>
@@ -570,7 +628,7 @@ function Laporan() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.ongkir || 0)}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                          {formatRupiah(item.total_bayar || 0)}
+                          {formatRupiah(item.total_toko || 0)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

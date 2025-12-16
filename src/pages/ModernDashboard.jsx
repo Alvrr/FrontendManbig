@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { getAllProduk } from '../services/produkAPI';
 import { getAllPelanggan } from '../services/pelangganAPI';
 import { getAllPembayaran } from '../services/pembayaranAPI';
+import { listPengiriman } from '../services/pengirimanAPI';
+import { listTransaksi } from '../services/transaksiAPI';
 import { decodeJWT } from '../utils/jwtDecode';
 import Card from '../components/Card'
 import RecentActivity from '../components/RecentActivity'
@@ -26,15 +28,18 @@ const ModernDashboard = () => {
     totalPembayaran: 0,
     totalPendapatan: 0,
     pembayaranHariIni: 0,
-    produkTerlaris: []
+    produkTerlaris: [],
+    driverPendapatanHariIni: []
   })
 
   const fetchStats = useCallback(async () => {
     try {
-      let [produk, pelanggan, pembayaran] = await Promise.all([
+      let [produk, pelanggan, pembayaran, pengiriman, transaksi] = await Promise.all([
         getAllProduk(),
         getAllPelanggan(),
-        getAllPembayaran()
+        getAllPembayaran(),
+        listPengiriman().catch(() => []),
+        listTransaksi().catch(() => [])
       ])
       // Defensive: if null, set to []
       produk = Array.isArray(produk) ? produk : [];
@@ -42,43 +47,109 @@ const ModernDashboard = () => {
       pembayaran = Array.isArray(pembayaran) ? pembayaran : [];
 
       // Filter pembayaran berdasarkan role - sama seperti implementasi driver dan kasir
-      const filteredPembayaran = user.role === 'driver'
+      let filteredPembayaran = user.role === 'driver'
         ? pembayaran.filter(item => item && item.id_driver === user.id)
         : user.role === 'kasir'
         ? pembayaran.filter(item => item && item.id_kasir === user.id)
         : pembayaran;
 
-      const totalPendapatan = filteredPembayaran.reduce((sum, item) => sum + (item?.total_bayar || 0), 0)
+      // Selaraskan dengan laporan: kecualikan ID tertentu (PMB005..PMB001)
+      const excludeIds = new Set(['PMB005','PMB004','PMB003','PMB002','PMB001'])
+      filteredPembayaran = (Array.isArray(filteredPembayaran) ? filteredPembayaran : [])
+        .filter(p => !excludeIds.has(String(p?.id)))
+
+      const totalPendapatanSemua = filteredPembayaran.reduce((sum, item) => sum + (item?.total_bayar || 0), 0)
+
+      // Pisahkan ongkir dari total: ambil ongkir per transaksi dari data pengiriman
+      const ongkirByTransaksi = new Map()
+      ;(Array.isArray(pengiriman) ? pengiriman : []).forEach(s => {
+        if (s?.transaksi_id) {
+          ongkirByTransaksi.set(s.transaksi_id, Number(s.ongkir || 0))
+        }
+      })
+
+      const totalOngkirFiltered = filteredPembayaran.reduce((sum, p) => {
+        const ong = ongkirByTransaksi.get(p.transaksi_id) || 0
+        return sum + ong
+      }, 0)
+
+      const totalPendapatanToko = Math.max(0, totalPendapatanSemua - totalOngkirFiltered)
       
       const today = new Date().toISOString().split('T')[0]
       const pembayaranHariIni = filteredPembayaran.filter(item => 
         item?.tanggal && item.tanggal.startsWith(today)
       ).length
 
-      // Hitung produk terlaris berdasarkan data yang sudah difilter
+      // Hitung transaksi hari ini: berdasarkan field tanggal atau created_at
+      const transaksiArr = Array.isArray(transaksi) ? transaksi : []
+      const todayDateObj = new Date()
+      const transaksiHariIni = transaksiArr.filter(t => {
+        if (t?.tanggal && typeof t.tanggal === 'string') {
+          return t.tanggal.startsWith(today)
+        }
+        if (t?.created_at) {
+          const d = new Date(t.created_at)
+          return d.toDateString() === todayDateObj.toDateString()
+        }
+        return false
+      }).length
+
+      // Hitung produk terlaris: jika pembayaran sudah memuat produk, pakai itu; fallback ke transaksi.items
       const produkCount = {}
-      filteredPembayaran.forEach(payment => {
-        if (payment?.produk) {
+      const bayarDenganProduk = filteredPembayaran.filter(p => Array.isArray(p?.produk) && p.produk.length > 0)
+      if (bayarDenganProduk.length > 0) {
+        bayarDenganProduk.forEach(payment => {
           payment.produk.forEach(item => {
             const key = item?.nama_produk || item?.id_produk
             if (!key) return;
             produkCount[key] = (produkCount[key] || 0) + (item?.jumlah || 1)
           })
-        }
-      })
+        })
+      } else {
+        (Array.isArray(transaksi) ? transaksi : []).forEach(t => {
+          if (Array.isArray(t?.items)) {
+            t.items.forEach(item => {
+              const key = item?.nama_produk || item?.produk_id
+              if (!key) return;
+              produkCount[key] = (produkCount[key] || 0) + (item?.jumlah || 1)
+            })
+          }
+        })
+      }
 
       const produkTerlaris = Object.entries(produkCount)
         .map(([nama, jumlah]) => ({ nama, jumlah }))
         .sort((a, b) => b.jumlah - a.jumlah)
         .slice(0, 5)
 
+      // Pendapatan driver hari ini (admin melihat semua)
+      let driverPendapatanHariIni = []
+      if (user.role === 'admin') {
+        const map = {}
+        const todayDate = new Date()
+        ;(Array.isArray(pengiriman) ? pengiriman : []).forEach(p => {
+          if (!p?.created_at || !p?.driver_id) return;
+          const d = new Date(p.created_at)
+          const sameDay = d.toDateString() === todayDate.toDateString()
+          if (sameDay) {
+            map[p.driver_id] = (map[p.driver_id] || 0) + Number(p.ongkir || 0)
+          }
+        })
+        driverPendapatanHariIni = Object.entries(map)
+          .map(([driver_id, total]) => ({ driver_id, total }))
+          .sort((a,b) => b.total - a.total)
+      }
+
       setStats({
         totalProduk: produk.length,
         totalPelanggan: pelanggan.length,
         totalPembayaran: filteredPembayaran.length,
-        totalPendapatan,
+        totalPendapatan: totalPendapatanToko,
+        totalOngkir: totalOngkirFiltered,
         pembayaranHariIni,
-        produkTerlaris
+        transaksiHariIni,
+        produkTerlaris,
+        driverPendapatanHariIni
       })
     } catch (error) {
       console.error("Error fetching stats:", error)
@@ -167,7 +238,7 @@ const ModernDashboard = () => {
       changeType: 'increase'
     },
     {
-      title: 'Pembayaran Bulan Ini',
+      title: 'Pendapatan Toko Bulan Ini',
       value: formatRupiah(stats.totalPendapatan),
       fullValue: `Rp ${stats.totalPendapatan.toLocaleString('id-ID')}`,
       icon: BanknotesIcon,
@@ -177,13 +248,40 @@ const ModernDashboard = () => {
     },
     {
       title: 'Transaksi Hari Ini',
-      value: stats.pembayaranHariIni,
+      value: stats.transaksiHariIni,
       icon: ArrowTrendingUpIcon,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
       changeType: 'increase'
     }
   ]
+
+  // Khusus admin: tampilkan pendapatan hari ini (semua), daftar pendapatan driver hari ini
+  const AdminSection = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Driver Hari Ini</h2>
+          <UsersIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        {stats.driverPendapatanHariIni.length > 0 ? (
+          <div className="space-y-2">
+            {stats.driverPendapatanHariIni.map((d, i) => (
+              <div key={d.driver_id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">{i+1}.</span>
+                  <span className="text-sm text-gray-900">{d.driver_id}</span>
+                </div>
+                <span className="text-sm font-semibold">{formatRupiah(d.total)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Belum ada pendapatan driver hari ini</p>
+        )}
+      </Card>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -233,32 +331,12 @@ const ModernDashboard = () => {
         })}
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Menu Utama</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {menuCards.map((item) => {
-            const Icon = item.icon
-            return (
-              <Card 
-                key={item.label}
-                className={`cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 ${item.bgColor} ${item.borderColor} border-2`}
-                onClick={() => navigate(item.path)}
-              >
-                <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <div className="p-4 bg-white rounded-full shadow-sm">
-                      <Icon className={`w-8 h-8 ${item.color}`} />
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.label}</h3>
-                  <p className="text-sm text-gray-600">{item.description}</p>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
+      {/* Quick Actions removed per request */}
+
+      {/* Admin extra section */}
+      {user.role === 'admin' && (
+        <AdminSection />
+      )}
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

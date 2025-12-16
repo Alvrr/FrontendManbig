@@ -10,18 +10,24 @@ import PageWrapper from "../components/PageWrapper"
 import Card from "../components/Card"
 import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { decodeJWT } from "../utils/jwtDecode"
+import { formatRupiah } from "../utils/currency"
+import { getKategori } from "../services/kategoriAPI"
+import { getSaldoProduk } from "../services/stokAPI"
 
 const Produk = () => {
   const [produk, setProduk] = useState([])
   const [user, setUser] = useState({ role: "" })
   const [searchId, setSearchId] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
+  const [kategori, setKategori] = useState([])
+  const [saldoMap, setSaldoMap] = useState({})
   const [form, setForm] = useState({
     nama_produk: "",
-    kategori: "",
-    harga: "",
-    stok: "",
+    kategori_id: "",
+    harga_jual: "",
+    harga_beli: "",
     deskripsi: "",
+    tanggal: "",
   })
   const [isEdit, setIsEdit] = useState(false)
   const [selectedId, setSelectedId] = useState("")
@@ -29,9 +35,24 @@ const Produk = () => {
   const itemsPerPage = 5
 
   const fetchData = async () => {
-    const data = await getAllProduk()
-    console.log('Fetched produk data:', data); // Debug log
-    setProduk(data)
+    const [dataProduk, dataKategori] = await Promise.all([
+      getAllProduk(),
+      getKategori(),
+    ])
+    setProduk(dataProduk)
+    setKategori(dataKategori)
+    // ambil saldo per produk untuk stok terkini
+    const entries = await Promise.all(
+      (Array.isArray(dataProduk) ? dataProduk : []).map(async (p) => {
+        try {
+          const s = await getSaldoProduk(p.id)
+          return [p.id, s?.saldo ?? p.stok ?? 0]
+        } catch {
+          return [p.id, p.stok ?? 0]
+        }
+      })
+    )
+    setSaldoMap(Object.fromEntries(entries))
   }
 
   useEffect(() => {
@@ -55,20 +76,22 @@ const Produk = () => {
       setForm({
         id: item.id,
         nama_produk: item.nama_produk || "",
-        kategori: item.kategori || "",
-        harga: item.harga !== undefined && item.harga !== null ? String(item.harga) : "",
-        stok: item.stok !== undefined && item.stok !== null ? String(item.stok) : "",
+        kategori_id: item.kategori_id || "",
+        harga_jual: item.harga_jual !== undefined && item.harga_jual !== null ? String(item.harga_jual) : "",
+        harga_beli: item.harga_beli !== undefined && item.harga_beli !== null ? String(item.harga_beli) : "",
         deskripsi: item.deskripsi || "",
+        tanggal: item.created_at ? new Date(item.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
       })
       setSelectedId(item.id)
       setIsEdit(true)
     } else {
       setForm({
         nama_produk: "",
-        kategori: "",
-        harga: "",
-        stok: "",
+        kategori_id: "",
+        harga_jual: "",
         deskripsi: "",
+        harga_beli: "",
+        tanggal: new Date().toISOString().slice(0,10),
       })
       setIsEdit(false)
       setSelectedId("")
@@ -90,30 +113,30 @@ const Produk = () => {
     // Buat payload yang sesuai dengan struktur backend
     const payload = {
       nama_produk: form.nama_produk,
-      kategori: form.kategori,
-      harga: Number(form.harga),
-      stok: Number(form.stok),
+      kategori_id: form.kategori_id,
+      harga_jual: Number(form.harga_jual),
+      harga_beli: form.harga_beli === "" ? 0 : Number(form.harga_beli),
       deskripsi: form.deskripsi,
     }
 
     if (
       !payload.nama_produk ||
-      !payload.kategori ||
-      isNaN(payload.harga) ||
-      isNaN(payload.stok) ||
+      !payload.kategori_id ||
+      isNaN(payload.harga_jual) ||
       !payload.deskripsi
     ) {
       Swal.fire("Gagal", "Semua field wajib diisi dengan benar", "error")
       return
     }
-    if (payload.harga <= 0) {
+    if (payload.harga_jual <= 0) {
       Swal.fire("Gagal", "Harga harus berupa angka positif", "error")
       return
     }
-    if (payload.stok < 0) {
-      Swal.fire("Gagal", "Stok tidak boleh negatif", "error")
+    if (isNaN(payload.harga_beli) || payload.harga_beli < 0) {
+      Swal.fire("Gagal", "Harga beli tidak boleh negatif", "error")
       return
     }
+    // Stok dikelola di halaman Stok; tidak bisa diinput di sini
 
     const confirm = await Swal.fire({
       title: isEdit ? "Yakin akan mengedit data?" : "Yakin akan menambahkan data?",
@@ -219,6 +242,13 @@ const Produk = () => {
     setCurrentPage(newPage)
   }
 
+  const formatTanggal = (value) => {
+    if (!value) return "-"
+    const d = new Date(value)
+    if (isNaN(d)) return "-"
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
   return (
     <PageWrapper 
       title="Manajemen Produk" 
@@ -266,6 +296,7 @@ const Produk = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
@@ -274,10 +305,11 @@ const Produk = () => {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_produk}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.kategori}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {item.harga?.toLocaleString('id-ID')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.stok}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{kategori.find(k => k._id === item.kategori_id)?.nama_kategori || item.kategori_id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.harga_jual)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{saldoMap[item.id] ?? item.stok ?? 0}</td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{item.deskripsi}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTanggal(item.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     {user.role !== "driver" && (
                       <>
@@ -385,23 +417,28 @@ const Produk = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                <input
-                  type="text"
-                  value={form.kategori}
-                  onChange={(e) => setForm({ ...form, kategori: e.target.value })}
-                  placeholder="Contoh: Elektronik, Pakaian, Makanan, Minuman"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                <select
+                  value={form.kategori_id}
+                  onChange={(e) => setForm({ ...form, kategori_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   required
-                />
+                >
+                  <option value="" disabled>Pilih kategori</option>
+                  {(Array.isArray(kategori) ? kategori : []).map((k, idx) => (
+                    <option key={k?._id || k?.id || `${k?.nama_kategori || 'opt'}-${idx}`} value={k?._id || k?.id}>
+                      {k?.nama_kategori || k?._id || k?.id}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Harga</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Jual</label>
                 <input
                   type="number"
-                  value={form.harga}
-                  onChange={(e) => setForm({ ...form, harga: e.target.value })}
-                  placeholder="Masukkan harga dalam rupiah (contoh: 5000000)"
+                  value={form.harga_jual}
+                  onChange={(e) => setForm({ ...form, harga_jual: e.target.value })}
+                  placeholder="Masukkan harga jual dalam rupiah (contoh: 5000000)"
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
@@ -409,17 +446,18 @@ const Produk = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stok</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Beli</label>
                 <input
                   type="number"
-                  value={form.stok}
-                  onChange={(e) => setForm({ ...form, stok: e.target.value })}
-                  placeholder="Jumlah barang tersedia (contoh: 50)"
+                  value={form.harga_beli}
+                  onChange={(e) => setForm({ ...form, harga_beli: e.target.value })}
+                  placeholder="Masukkan harga beli (boleh 0)"
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
                 />
               </div>
+
+              {/* Stok hanya ditampilkan di tabel, dikelola via halaman Stok */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
@@ -430,6 +468,17 @@ const Produk = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows="3"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  value={form.tanggal}
+                  onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                  disabled
                 />
               </div>
 

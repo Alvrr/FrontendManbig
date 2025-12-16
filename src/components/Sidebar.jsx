@@ -6,7 +6,8 @@ import {
   CreditCardIcon, 
   ClockIcon,
   DocumentTextIcon,
-  UsersIcon
+  UsersIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
 import { decodeJWT } from '../utils/jwtDecode'
@@ -26,31 +27,49 @@ const Sidebar = ({ isOpen }) => {
       name: 'Dashboard',
       path: '/dashboard',
       icon: HomeIcon,
-      roles: ['admin', 'kasir', 'driver']
+      roles: ['admin', 'kasir', 'driver', 'gudang']
     },
     {
       name: 'Produk',
       path: '/produk',
       icon: CubeIcon,
-      roles: ['admin', 'kasir', 'driver'] // Driver bisa lihat produk (read-only)
+      roles: ['admin', 'kasir', 'driver', 'gudang']
     },
     {
       name: 'Pelanggan',
       path: '/pelanggan',
       icon: UserGroupIcon,
-      roles: ['admin', 'kasir', 'driver'] // Driver bisa lihat pelanggan (read-only)
+      roles: ['admin', 'kasir']
     },
     {
       name: 'Pembayaran',
       path: '/pembayaran',
       icon: CreditCardIcon,
-      roles: ['admin', 'kasir', 'driver'] // Driver bisa lihat pembayaran miliknya
+      roles: ['admin', 'kasir'] // Hanya admin/kasir sesuai backend
     },
     {
-      name: 'Riwayat',
-      path: '/riwayat',
+      name: 'Pengiriman',
+      path: '/pengiriman',
+      icon: TruckIcon,
+      roles: ['driver', 'admin'] // Driver dan Admin dapat mengakses pengiriman
+    },
+    {
+      name: 'Kategori',
+      path: '/kategori',
+      icon: CubeIcon,
+      roles: ['gudang', 'admin']
+    },
+    {
+      name: 'Stok',
+      path: '/stok',
+      icon: CubeIcon,
+      roles: ['gudang', 'admin']
+    },
+    {
+      name: 'Transaksi',
+      path: '/transaksi',
       icon: ClockIcon,
-      roles: ['admin', 'kasir', 'driver']
+      roles: ['admin', 'kasir']
     },
     {
       name: 'Laporan',

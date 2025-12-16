@@ -2,34 +2,34 @@
 import React, { useEffect, useState } from "react";
 import { decodeJWT } from "../utils/jwtDecode";
 import { getAllPembayaran, createPembayaran } from "../services/pembayaranAPI";
+import { listTransaksi } from "../services/transaksiAPI";
 import { getAllPelanggan } from "../services/pelangganAPI";
 import { getAllDrivers } from "../services/driverAPI";
-import { getAllProduk } from "../services/produkAPI";
+import { createPengiriman } from "../services/pengirimanAPI";
 import Swal from "sweetalert2";
 import axiosInstance from "../services/axiosInstance";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { formatRupiah } from "../utils/currency";
 
 const Pembayaran = () => {
   const [pembayaran, setPembayaran] = useState([]);
   const [user, setUser] = useState({ role: '', id: '' });
-  const [pelanggan, setPelanggan] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [produk, setProduk] = useState([]);
+  const [transaksiList, setTransaksiList] = useState([]);
+  const [pelangganList, setPelangganList] = useState([]);
+  const [driverList, setDriverList] = useState([]);
+  const [baseTotal, setBaseTotal] = useState(0); // total transaksi sebelum ongkir
+  const [ongkir, setOngkir] = useState(0); // ongkir berdasarkan kendaraan
   const [form, setForm] = useState({
-    id_pelanggan: "",
-    tanggal: new Date(),
-    produk: [],
+    transaksi_id: "",
+    metode: "cash",
     total_bayar: 0,
-    jenis_pengiriman: "",
-    id_driver: "",
-    nama_driver: "",
-    ongkir: 0,
-    nama_kasir: ""
+    delivery: false,
+    jenis_kendaraan: "mobil",
+    driver_id: "",
   });
   const [showPopup, setShowPopup] = useState(false);
-  const [produkDipilih, setProdukDipilih] = useState([]);
   const [searchId, setSearchId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -39,13 +39,32 @@ const Pembayaran = () => {
     const token = localStorage.getItem('token');
     const decoded = decodeJWT(token);
     setUser({ role: decoded?.role || '', id: decoded?.id || '', nama: decoded?.nama || '' });
-    setForm(f => ({ ...f, nama_kasir: decoded?.nama || '' }));
     fetchPembayaran();
-    fetchPelanggan();
-    fetchProduk();
-    fetchDrivers();
+    fetchTransaksi();
+    fetchMasters();
+    // Disesuaikan: halaman pembayaran mengikuti skema baru
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const fetchTransaksi = async () => {
+    try {
+      const data = await listTransaksi();
+      // Filter hanya transaksi aktif jika diperlukan
+      const aktif = Array.isArray(data) ? data.filter(t => t && t.status !== 'Selesai') : [];
+      setTransaksiList(aktif);
+    } catch (e) {
+      console.error('Gagal fetch transaksi:', e);
+    }
+  };
+
+  const fetchMasters = async () => {
+    try {
+      const [pel, drv] = await Promise.all([getAllPelanggan(), getAllDrivers()]);
+      setPelangganList(Array.isArray(pel) ? pel : []);
+      setDriverList(Array.isArray(drv) ? drv : []);
+    } catch (e) {
+      // ignore for now
+    }
+  };
 
   const fetchPembayaran = async () => {
     const data = await getAllPembayaran();
@@ -54,154 +73,29 @@ const Pembayaran = () => {
     setPembayaran(data);
   };
 
+  // Re-calc ongkir setiap jenis kendaraan berubah atau delivery on/off
+  useEffect(() => {
+    const tarif = form.jenis_kendaraan === 'mobil' ? 25000 : 10000;
+    const currentOngkir = form.delivery ? tarif : 0;
+    setOngkir(currentOngkir);
+  }, [form.delivery, form.jenis_kendaraan]);
 
-  const fetchPelanggan = async () => {
-    const data = await getAllPelanggan();
-    setPelanggan(data);
-  };
+  // Saat transaksi berubah, set baseTotal dari transaksi terpilih
+  useEffect(() => {
+    const trx = transaksiList.find(t => t.id === form.transaksi_id);
+    const tot = Number(trx?.total_harga ?? trx?.total ?? 0);
+    setBaseTotal(tot);
+  }, [form.transaksi_id, transaksiList]);
 
-  const fetchDrivers = async () => {
-    try {
-      const data = await getAllDrivers();
-      setDrivers(Array.isArray(data) ? data : []);
-    } catch {
-      setDrivers([]);
-    }
-  };
+  // Sinkronkan total_bayar otomatis = baseTotal + ongkir
+  useEffect(() => {
+    setForm(f => ({ ...f, total_bayar: Number(baseTotal) + Number(ongkir) }));
+  }, [baseTotal, ongkir]);
 
-  const fetchProduk = async () => {
-    const data = await getAllProduk();
-    setProduk(data);
-  };
+  // Hapus seluruh handler terkait produk karena tidak digunakan pada skema baru
 
-  const handleAddProduk = () => {
-    if (user.role === "driver") {
-      Swal.fire({
-        icon: "warning",
-        title: "Akses Ditolak",
-        text: "Driver tidak diizinkan menambah produk ke transaksi.",
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      });
-      return;
-    }
-    setProdukDipilih([
-      ...produkDipilih,
-      {
-        id_produk: "",
-        nama_produk: "",
-        harga: 0,
-        jumlah: 1,
-        subtotal: 0,
-      },
-    ]);
-  };
-
-  const handleRemoveProduk = async (index) => {
-    if (user.role === "driver") {
-      Swal.fire({
-        icon: "warning",
-        title: "Akses Ditolak",
-        text: "Driver tidak diizinkan menghapus produk dari transaksi.",
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      });
-      return;
-    }
-    const confirm = await Swal.fire({
-      title: "Hapus produk ini?",
-      text: "Produk akan dihapus dari daftar pembayaran.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Ya, hapus",
-      cancelButtonText: "Batal",
-      customClass: {
-        confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-        cancelButton: "bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500",
-      },
-      buttonsStyling: false,
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    const updatedList = [...produkDipilih];
-    updatedList.splice(index, 1);
-    setProdukDipilih(updatedList);
-    updateTotalBayar(updatedList);
-  };
-
-  const handleProdukChange = (index, id_produk) => {
-    const produkTerpilih = produk.find((p) => p.id === id_produk);
-    const list = [...produkDipilih];
-    list[index] = {
-      ...list[index],
-      id_produk,
-      nama_produk: produkTerpilih?.nama_produk || "",
-      harga: parseInt(produkTerpilih?.harga || 0),
-      subtotal: parseInt(produkTerpilih?.harga || 0) * list[index].jumlah,
-    };
-    setProdukDipilih(list);
-    updateTotalBayar(list);
-  };
-
-  const handleJumlahChange = (index, jumlah) => {
-    if (user.role === "driver") {
-      Swal.fire({
-        icon: "warning",
-        title: "Akses Ditolak",
-        text: "Driver tidak diizinkan mengubah jumlah produk.",
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      });
-      return;
-    }
-    const list = [...produkDipilih];
-    const produkDetail = produk.find(p => p.id === list[index].id_produk);
-    // Pastikan jumlah minimal 1
-    const jumlahInt = Math.max(1, parseInt(jumlah) || 1);
-    // Validasi jika jumlah melebihi stok
-    if (produkDetail && jumlahInt > produkDetail.stok) {
-      Swal.fire({
-        icon: "warning",
-        title: "Jumlah melebihi stok",
-        text: `Stok ${produkDetail.nama_produk} hanya tersedia ${produkDetail.stok}`,
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      });
-      // Set jumlah ke stok maksimal yang tersedia
-      list[index].jumlah = produkDetail.stok;
-      list[index].subtotal = list[index].harga * produkDetail.stok;
-      setProdukDipilih(list);
-      updateTotalBayar(list);
-      return;
-    }
-    list[index].jumlah = jumlahInt;
-    list[index].subtotal = list[index].harga * jumlahInt;
-    setProdukDipilih(list);
-    updateTotalBayar(list);
-  };
-
-  const updateTotalBayar = (list, pengiriman = form.jenis_pengiriman, ongkirManual = form.ongkir) => {
-    const totalProduk = list.reduce((sum, item) => sum + item.subtotal, 0);
-    let ongkir = 0;
-    if (pengiriman === "motor") ongkir = 10000;
-    else if (pengiriman === "mobil") ongkir = 20000;
-    else if (pengiriman === "ambil_sendiri") ongkir = 0;
-    // Jika ongkirManual diisi manual (misal backend hitung), pakai itu
-    if (typeof ongkirManual === 'number' && ongkirManual > 0) ongkir = ongkirManual;
-    setForm(f => ({ ...f, total_bayar: totalProduk + ongkir, ongkir }));
+  const updateTotalBayar = (val) => {
+    setForm(f => ({ ...f, total_bayar: Number(val) || 0 }));
   };
 
   const handleSubmit = async () => {
@@ -220,11 +114,11 @@ const Pembayaran = () => {
       return;
     }
     // Validasi data dasar
-    if (!form.id_pelanggan || produkDipilih.length === 0) {
+    if (!form.transaksi_id || !form.total_bayar || form.total_bayar <= 0) {
       await Swal.fire({
         icon: "warning",
         title: "Data tidak lengkap",
-        text: "Pelanggan harus dipilih dan minimal 1 produk harus ditambahkan",
+        text: "Pilih transaksi dan isi total bayar dengan benar",
         confirmButtonText: "OK",
         customClass: {
           confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
@@ -234,55 +128,7 @@ const Pembayaran = () => {
       return;
     }
 
-    // Validasi produk yang dipilih
-    for (const item of produkDipilih) {
-      if (!item.id_produk) {
-        await Swal.fire({
-          icon: "warning",
-          title: "Produk belum dipilih",
-          text: "Semua produk dalam daftar harus dipilih",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-          },
-          buttonsStyling: false,
-        });
-        return;
-      }
-      // Validasi produk benar-benar ada di master produk
-      const produkDetail = produk.find(p => p.id === item.id_produk);
-      if (!produkDetail) {
-        await Swal.fire({
-          icon: "error",
-          title: "Produk tidak ditemukan",
-          text: `Produk dengan ID ${item.id_produk} tidak ditemukan di master produk. Pilih produk yang valid.`,
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-          },
-          buttonsStyling: false,
-        });
-        return;
-      }
-    }
-
-    // Validasi stok produk
-    for (const item of produkDipilih) {
-      const produkDetail = produk.find(p => p.id === item.id_produk);
-      if (produkDetail && item.jumlah > produkDetail.stok) {
-        await Swal.fire({
-          icon: "error",
-          title: "Stok tidak mencukupi",
-          text: `Stok ${produkDetail.nama_produk} hanya tersedia ${produkDetail.stok}, tidak dapat membeli ${item.jumlah}`,
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-          },
-          buttonsStyling: false,
-        });
-        return;
-      }
-    }
+    // Tidak ada validasi produk pada skema pembayaran baru
 
     const confirm = await Swal.fire({
       title: "Yakin ingin menyimpan pembayaran ini?",
@@ -301,16 +147,35 @@ const Pembayaran = () => {
 
     try {
       const data = {
-        ...form,
-        tanggal: new Date().toISOString(),
-        produk: produkDipilih,
-        status: "Pending",
+        transaksi_id: form.transaksi_id,
+        metode: form.metode,
+        total_bayar: Number(baseTotal) + Number(ongkir),
+        status: "pending",
       };
 
       console.log('Data pembayaran yang akan disimpan:', data);
 
+      if (form.delivery && !form.driver_id) {
+        await Swal.fire({ icon: 'warning', title: 'Driver belum dipilih', text: 'Pilih driver untuk pengiriman', confirmButtonText: 'OK', buttonsStyling: false, customClass: { confirmButton: 'bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600' } });
+        return;
+      }
+
       const response = await createPembayaran(data);
       console.log('Response pembayaran:', response.data);
+
+      // Optional: buat pengiriman jika delivery dipilih
+      if (form.delivery && form.driver_id) {
+        try {
+          await createPengiriman({
+            transaksi_id: form.transaksi_id,
+            driver_id: form.driver_id,
+            jenis: form.jenis_kendaraan,
+            ongkir: Number(ongkir),
+          });
+        } catch (e) {
+          console.warn('Gagal membuat pengiriman:', e?.response?.data || e);
+        }
+      }
 
       await Swal.fire({
         icon: "success",
@@ -324,15 +189,10 @@ const Pembayaran = () => {
       });
 
       fetchPembayaran();
-      fetchProduk(); // Refresh data produk untuk update stok
       setShowPopup(false);
-      setForm({
-        id_pelanggan: "",
-        tanggal: new Date(),
-        produk: [],
-        total_bayar: 0,
-      });
-      setProdukDipilih([]);
+      setForm({ transaksi_id: "", metode: "cash", total_bayar: 0, delivery: false, jenis_kendaraan: "mobil", driver_id: "" });
+      setBaseTotal(0);
+      setOngkir(0);
     } catch (error) {
       console.error('Error saat menyimpan pembayaran:', error.response?.data || error.message);
       Swal.fire({
@@ -423,64 +283,17 @@ const Pembayaran = () => {
     }
   };
 
-  const handleCetakStruk = async (pembayaranId) => {
-    try {
-      // Gunakan axiosInstance yang sudah include JWT token
-      const response = await axiosInstance.get(`/pembayaran/cetak/${pembayaranId}`, {
-        responseType: 'blob' // Untuk handle file PDF/HTML
-      });
+  // Cetak struk dihapus sesuai backend baru
 
-      // Buat blob URL dan buka di tab baru
-      const blob = new Blob([response.data], { 
-        type: response.headers['content-type'] || 'application/pdf'
-      });
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      
-      // Cleanup URL setelah 1 detik
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-
-    } catch (error) {
-      console.error('Error saat mencetak struk:', error);
-      
-      let errorMessage = "Terjadi kesalahan saat mencetak struk";
-      if (error.response?.status === 401) {
-        errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
-      } else if (error.response?.status === 404) {
-        errorMessage = "Data pembayaran tidak ditemukan";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      Swal.fire({
-        icon: "error",
-        title: "Gagal Mencetak",
-        text: errorMessage,
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-        },
-        buttonsStyling: false,
-      });
-    }
-  };
-
-  const formatRupiah = (angka) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(angka);
-  };
+  // gunakan util bersama
 
   // Defensive: pembayaran always array
   const pembayaranArr = Array.isArray(pembayaran) ? pembayaran : [];
   // Filter transaksi aktif (status !== 'Selesai')
-  const transaksiAktif = pembayaranArr.filter(item => item && item.status !== 'Selesai');
+  const transaksiAktif = pembayaranArr.filter(item => item && (item.status || '').toLowerCase() !== 'selesai');
   // Filter sesuai role - sama seperti implementasi driver
-  const transaksiTampil = user.role === 'driver'
-    ? transaksiAktif.filter(item => item && item.id_driver === user.id)
-    : user.role === 'kasir'
-    ? transaksiAktif.filter(item => item && item.id_kasir === user.id)
+  const transaksiTampil = user.role === 'kasir'
+    ? transaksiAktif.filter(item => item && item.kasir_id === user.id)
     : transaksiAktif;
   // Search
   const filteredPembayaran = transaksiTampil.filter((item) =>
@@ -535,11 +348,8 @@ const Pembayaran = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Pelanggan</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Kasir</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Driver</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Produk</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Ongkir</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Transaksi</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Metode</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Total Bayar</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Tanggal</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
@@ -548,38 +358,19 @@ const Pembayaran = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedData.map((item) => {
-                const pelangganDetail = pelanggan.find(p => p.id === item.id_pelanggan);
-                
-                // Debug log untuk driver access
-                if (user.role === "driver") {
-                  console.log(`Item ${item.id}: driver=${item.id_driver}, user=${user.id}, match=${item.id_driver === user.id}`);
-                }
+                // Disesuaikan: tidak lagi menampilkan pelanggan/driver pada tabel pembayaran
                 
                 return (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{pelangganDetail?.nama || item.nama_pelanggan || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_kasir || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_driver || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.produk && item.produk.length > 0 ? (
-                        <ul className="list-disc ml-4">
-                          {item.produk.map((prod, idx) => (
-                            <li key={idx}>
-                              {(prod.nama_produk || prod.id_produk) + ' x' + prod.jumlah + ' = ' + formatRupiah(prod.subtotal)}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.ongkir || 0)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.transaksi_id}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.metode || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.total_bayar)}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.tanggal ? new Date(item.tanggal).toLocaleString('id-ID') : '-'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.status || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
                       {/* Tombol Selesai - hanya untuk admin, kasir, atau driver yang ditugaskan */}
-                      {(user.role === "admin" || user.role === "kasir" || 
-                        (user.role === "driver" && item.id_driver === user.id)) && 
+                        {(user.role === "admin" || user.role === "kasir") && 
                         item.status !== "Selesai" && (
                         <button
                           onClick={() => handleSelesai(item)}
@@ -590,15 +381,7 @@ const Pembayaran = () => {
                       )}
                       
                       {/* Tombol Cetak - untuk admin, kasir, atau driver yang ditugaskan */}
-                      {(user.role === "admin" || user.role === "kasir" || 
-                        (user.role === "driver" && item.id_driver === user.id)) && (
-                        <button
-                          onClick={() => handleCetakStruk(item.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm font-medium"
-                        >
-                          Cetak Struk
-                        </button>
-                      )}
+                        {/* Cetak Struk dihapus sesuai backend baru */}
                     </td>
                   </tr>
                 );
@@ -633,151 +416,96 @@ const Pembayaran = () => {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1">
-            {/* Nama Kasir otomatis dari JWT, tidak bisa diubah */}
+            {/* Form sederhana sesuai skema pembayaran baru */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Kasir</label>
-              <input
-                type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-700"
-                value={form.nama_kasir}
-                disabled
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Pelanggan</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Transaksi</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={form.id_pelanggan}
-                onChange={(e) => setForm({ ...form, id_pelanggan: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                value={form.transaksi_id}
+                onChange={(e) => setForm(f => ({ ...f, transaksi_id: e.target.value }))}
               >
-                <option value="">Pilih Pelanggan</option>
-                {pelanggan.map((p) => (
-                  <option key={p.id} value={p.id} className="text-black bg-white">
-                    {p.nama} ({p.id})
+                <option value="">-- Pilih Transaksi --</option>
+                {transaksiList.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id} - {t.pelanggan_id || 'unknown'} ({t.status}) • {formatRupiah(t.total_harga || t.total || 0)}
                   </option>
                 ))}
               </select>
             </div>
-
+            {/* Ringkasan total dan ongkir */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Total Transaksi</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50" value={formatRupiah(baseTotal)} readOnly />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ongkir</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50" value={formatRupiah(ongkir)} readOnly />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Total Bayar</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
+                  value={formatRupiah(form.total_bayar)}
+                  readOnly
+                />
+              </div>
+            </div>
+            {/* Opsi Delivery */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Daftar Produk</label>
-              {produkDipilih.map((item, index) => (
-                <div key={index} className="flex gap-2 mb-2 items-center">
-                  <select
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-1/3 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={item.id_produk}
-                    onChange={(e) => handleProdukChange(index, e.target.value)}
-                  >
-                    <option value="">Pilih Produk</option>
-                    {produk
-                      .filter((p) => p.id && p.nama_produk) // hanya produk valid
-                      .map((p) => (
-                        <option key={p.id} value={p.id} className="text-black bg-white">
-                          {p.nama_produk} (Stok: {p.stok})
-                        </option>
-                      ))}
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={form.delivery} onChange={e => setForm(f => ({ ...f, delivery: e.target.checked }))} />
+                <span>Butuh Pengiriman (Delivery)</span>
+              </label>
+            </div>
+            {form.delivery && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kendaraan</label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.jenis_kendaraan} onChange={e => setForm(f => ({ ...f, jenis_kendaraan: e.target.value }))}>
+                    <option value="mobil">Mobil</option>
+                    <option value="motor">Motor</option>
                   </select>
-                  <input
-                    type="number"
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-1/4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min="1"
-                    value={item.jumlah}
-                    onChange={(e) => handleJumlahChange(index, e.target.value)}
-                    placeholder="Qty"
-                  />
-                  <span className="w-1/3 text-sm font-medium">{formatRupiah(item.subtotal)}</span>
-                  <button
-                    onClick={() => handleRemoveProduk(index)}
-                    className="ml-2 text-red-600 hover:text-red-800 font-bold"
-                    title="Hapus Produk"
-                  >
-                    ❌
-                  </button>
                 </div>
-              ))}
-              <button
-                onClick={handleAddProduk}
-                className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium"
-              >
-                + Tambah Produk
-              </button>
-            </div>
-
-
-            {/* Jenis Pengiriman */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Pengiriman</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={form.jenis_pengiriman}
-                onChange={e => {
-                  const val = e.target.value;
-                  setForm(f => ({ ...f, jenis_pengiriman: val, id_driver: "", nama_driver: "" }));
-                  updateTotalBayar(produkDipilih, val);
-                }}
-              >
-                <option value="">Pilih Jenis Pengiriman</option>
-                <option value="motor">Motor (Rp 10.000)</option>
-                <option value="mobil">Mobil (Rp 20.000)</option>
-                <option value="ambil_sendiri">Ambil Sendiri (Gratis)</option>
-              </select>
-            </div>
-
-            {/* Nama Driver jika motor/mobil */}
-            {(form.jenis_pengiriman === "motor" || form.jenis_pengiriman === "mobil") && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nama Driver</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={form.id_driver}
-                  onChange={e => {
-                    const selected = drivers.find(d => d.id === e.target.value);
-                    
-                    // Validasi status driver
-                    if (selected && selected.status === 'nonaktif') {
-                      Swal.fire({
-                        icon: "warning",
-                        title: "Driver Tidak Aktif",
-                        text: `Driver ${selected.nama} sedang dalam status non-aktif dan tidak dapat dipilih untuk pengiriman.`,
-                        confirmButtonText: "OK",
-                        customClass: {
-                          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-                        },
-                        buttonsStyling: false,
-                      });
-                      // Reset pilihan driver
-                      setForm(f => ({ ...f, id_driver: "", nama_driver: "" }));
-                      return;
-                    }
-                    
-                    setForm(f => ({ ...f, id_driver: selected ? selected.id : "", nama_driver: selected ? selected.nama : "" }));
-                  }}
-                  required
-                >
-                  <option value="">Pilih Driver</option>
-                  {drivers.map((d) => (
-                    <option 
-                      key={d.id} 
-                      value={d.id}
-                      style={{
-                        color: d.status === 'nonaktif' ? '#9CA3AF' : '#000000',
-                        fontStyle: d.status === 'nonaktif' ? 'italic' : 'normal'
-                      }}
-                    >
-                      {d.nama} ({d.id}) {d.status === 'nonaktif' ? '- Non Aktif' : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Driver</label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.driver_id} onChange={e => setForm(f => ({ ...f, driver_id: e.target.value }))}>
+                    <option value="">-- Pilih Driver --</option>
+                    {driverList.map(d => (
+                      <option key={d.id} value={d.id}>{d.nama || d.email || d.id}</option>
+                    ))}
+                  </select>
+                  {/* Alamat Pelanggan tampil otomatis dari transaksi terpilih */}
+                  <div className="mt-2 text-sm text-gray-600">
+                    {(() => {
+                      const trx = transaksiList.find(t => t.id === form.transaksi_id);
+                      const pel = pelangganList.find(p => p.id === trx?.pelanggan_id);
+                      if (!trx || !pel) return null;
+                      return (
+                        <div className="pt-1">
+                          <div><span className="font-medium">Penerima:</span> {pel.nama} ({pel.id})</div>
+                          <div><span className="font-medium">Alamat:</span> {pel.alamat || '-'}</div>
+                          <div><span className="font-medium">Kendaraan:</span> {form.jenis_kendaraan} • <span className="font-medium">Driver:</span> {driverList.find(d => d.id === form.driver_id)?.nama || '-'}</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
             )}
-
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ongkir:</label>
-              <div className="text-lg font-semibold text-gray-800 mb-2">{formatRupiah(form.ongkir)}</div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Bayar:</label>
-              <div className="text-xl font-bold text-blue-600">{formatRupiah(form.total_bayar)}</div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Metode</label>
+              <select
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                value={form.metode}
+                onChange={(e) => setForm(f => ({ ...f, metode: e.target.value }))}
+              >
+                <option value="cash">Cash</option>
+                <option value="transfer">Transfer</option>
+                <option value="qris">QRIS</option>
+              </select>
             </div>
+            {/* Total Bayar otomatis dari total transaksi + ongkir */}
 
             </div>
             
@@ -786,13 +514,7 @@ const Pembayaran = () => {
                 <button
                   onClick={() => {
                     setShowPopup(false);
-                    setForm({
-                      id_pelanggan: "",
-                      tanggal: new Date(),
-                      produk: [],
-                      total_bayar: 0,
-                    });
-                    setProdukDipilih([]);
+                    setForm({ transaksi_id: "", metode: "cash", total_bayar: 0 });
                   }}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium"
                 >

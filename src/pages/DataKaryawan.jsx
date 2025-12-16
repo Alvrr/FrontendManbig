@@ -6,7 +6,7 @@ import {
   showDeleteConfirmAlert,
   showWarningAlert
 } from '../utils/alertUtils';
-import { UserPlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, UserGroupIcon, ShieldCheckIcon, TruckIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, UserGroupIcon, ShieldCheckIcon, TruckIcon, FunnelIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
 const DataKaryawan = () => {
   const [karyawan, setKaryawan] = useState([]);
@@ -243,6 +243,7 @@ const DataKaryawan = () => {
     switch (role) {
       case 'admin': return <ShieldCheckIcon className="w-4 h-4 text-red-500" />;
       case 'kasir': return <UserGroupIcon className="w-4 h-4 text-blue-500" />;
+      case 'gudang': return <ArchiveBoxIcon className="w-4 h-4 text-purple-500" />;
       case 'driver': return <TruckIcon className="w-4 h-4 text-green-500" />;
       default: return null;
     }
@@ -252,6 +253,7 @@ const DataKaryawan = () => {
     switch (role) {
       case 'admin': return 'bg-red-100 text-red-800 border-red-200';
       case 'kasir': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'gudang': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'driver': return 'bg-green-100 text-green-800 border-green-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -309,6 +311,7 @@ const DataKaryawan = () => {
               <option value="all">Semua Role</option>
               <option value="admin">Admin</option>
               <option value="kasir">Kasir</option>
+              <option value="gudang">Gudang</option>
               <option value="driver">Driver</option>
             </select>
             <select
@@ -535,6 +538,7 @@ const DataKaryawan = () => {
                     required
                   >
                     <option value="kasir">Kasir</option>
+                    <option value="gudang">Gudang</option>
                     <option value="driver">Driver</option>
                   </select>
                 </div>

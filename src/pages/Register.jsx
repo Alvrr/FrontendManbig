@@ -102,6 +102,7 @@ export default function RegisterPage() {
           >
             <option value="admin">Admin</option>
             <option value="kasir">Kasir</option>
+            <option value="gudang">Gudang</option>
             <option value="driver">Driver</option>
           </select>
         </div>
