@@ -34,12 +34,14 @@ const ModernDashboard = () => {
 
   const fetchStats = useCallback(async () => {
     try {
+      // Kurangi panggilan API yang di-forbid berdasarkan role
+      const isDriver = user.role === 'driver'
       let [produk, pelanggan, pembayaran, pengiriman, transaksi] = await Promise.all([
-        getAllProduk(),
-        getAllPelanggan(),
-        getAllPembayaran(),
+        getAllProduk().catch(() => []),
+        getAllPelanggan().catch(() => []),
+        isDriver ? Promise.resolve([]) : getAllPembayaran().catch(() => []),
         listPengiriman().catch(() => []),
-        listTransaksi().catch(() => [])
+        isDriver ? Promise.resolve([]) : listTransaksi().catch(() => [])
       ])
       // Defensive: if null, set to []
       produk = Array.isArray(produk) ? produk : [];
@@ -183,6 +185,40 @@ const ModernDashboard = () => {
           .sort((a,b) => b.total - a.total)
       }
 
+      // KPI khusus driver
+      let driverKPI = {
+        ongkirHariIni: 0,
+        ongkirMingguIni: 0,
+        pengirimanSelesaiHariIni: 0,
+        pengirimanAktif: 0
+      }
+      if (user.role === 'driver') {
+        const allShip = Array.isArray(pengiriman) ? pengiriman : []
+        const shipDriver = allShip.filter(p => p?.driver_id === user.id)
+        const todayDate = new Date()
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(todayDate.getDate() - 7)
+
+        const isSameDay = (ts) => {
+          if (!ts) return false
+          const d = new Date(ts)
+          return d.toDateString() === todayDate.toDateString()
+        }
+        const inLast7Days = (ts) => {
+          if (!ts) return false
+          const d = new Date(ts)
+          return d >= sevenDaysAgo && d <= todayDate
+        }
+
+        const hariIni = shipDriver.filter(p => isSameDay(p.updated_at || p.created_at))
+        const mingguIni = shipDriver.filter(p => inLast7Days(p.updated_at || p.created_at))
+
+        driverKPI.ongkirHariIni = hariIni.reduce((sum, p) => sum + Number(p.ongkir || 0), 0)
+        driverKPI.ongkirMingguIni = mingguIni.reduce((sum, p) => sum + Number(p.ongkir || 0), 0)
+        driverKPI.pengirimanSelesaiHariIni = hariIni.filter(p => String(p.status || '').toLowerCase() === 'selesai').length
+        driverKPI.pengirimanAktif = shipDriver.filter(p => String(p.status || '').toLowerCase() !== 'selesai').length
+      }
+
       setStats({
         totalProduk: produk.length,
         totalPelanggan: pelanggan.length,
@@ -193,6 +229,7 @@ const ModernDashboard = () => {
         transaksiHariIni,
         produkTerlaris,
         driverPendapatanHariIni,
+        driverKPI,
         pendapatanMingguIni: pendapatanTokoMingguIni,
         produkTerjualHariIni
       })
@@ -300,6 +337,8 @@ const ModernDashboard = () => {
       changeType: 'increase'
     }
   ]
+  // Sembunyikan kartu tertentu untuk role driver
+  const displayedStatsCards = user.role === 'driver' ? [] : statsCards
   // Khusus kasir: tampilkan KPI kasir
   const KasirSection = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -326,6 +365,44 @@ const ModernDashboard = () => {
         </div>
         <p className="text-2xl font-bold text-gray-900">{stats.produkTerjualHariIni || 0}</p>
         <p className="text-sm text-gray-500">Total item oleh kasir ini</p>
+      </Card>
+    </div>
+  )
+
+  // Khusus driver: tampilkan KPI driver
+  const DriverSection = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Ongkir Hari Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats?.driverKPI?.ongkirHariIni || 0)}</p>
+        <p className="text-sm text-gray-500">Pengiriman milik Anda</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Ongkir Minggu Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats?.driverKPI?.ongkirMingguIni || 0)}</p>
+        <p className="text-sm text-gray-500">7 hari terakhir</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Selesai Hari Ini</h2>
+          <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{stats?.driverKPI?.pengirimanSelesaiHariIni || 0}</p>
+        <p className="text-sm text-gray-500">Pengiriman Anda dengan status selesai</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Pengiriman Aktif</h2>
+          <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{stats?.driverKPI?.pengirimanAktif || 0}</p>
+        <p className="text-sm text-gray-500">Belum selesai</p>
       </Card>
     </div>
   )
@@ -368,7 +445,7 @@ const ModernDashboard = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        {statsCards.map((stat, index) => {
+        {displayedStatsCards.map((stat, index) => {
           const Icon = stat.icon
           return (
             <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
@@ -417,7 +494,13 @@ const ModernDashboard = () => {
         <KasirSection />
       )}
 
+      {/* Driver section */}
+      {user.role === 'driver' && (
+        <DriverSection />
+      )}
+
       {/* Charts Section */}
+      {user.role !== 'driver' && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Produk Terlaris */}
         <Card>
@@ -458,8 +541,8 @@ const ModernDashboard = () => {
           )}
         </Card>
 
-        {/* Recent Activity: tampilkan hanya jika role sudah diketahui dan bukan kasir */}
-        {user.role && user.role !== 'kasir' && (
+        {/* Recent Activity: tampilkan hanya untuk admin */}
+        {user.role === 'admin' && (
           <RecentActivity 
             maxItems={5} 
             showStats={false}
@@ -467,6 +550,7 @@ const ModernDashboard = () => {
           />
         )}
         </div>
+      )}
     </div>
   )
 }

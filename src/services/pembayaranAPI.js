@@ -6,6 +6,10 @@ export async function getAllPembayaran() {
     const res = await axiosInstance.get("/pembayaran");
     return res.data;
   } catch (err) {
+    if (err?.response?.status === 403) {
+      // Role tidak diizinkan: kembalikan [] agar UI tetap berjalan
+      return [];
+    }
     console.error("Gagal ambil data pembayaran:", err);
     return [];
   }
