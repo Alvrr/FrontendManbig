@@ -129,8 +129,8 @@ const Pelanggan = () => {
 
       setModalOpen(false)
       fetchData()
-    } catch {
-      showErrorAlert("Gagal", "Terjadi kesalahan")
+    } catch (e) {
+      showErrorAlert("Gagal", e?.response?.data?.message || e?.message || "Terjadi kesalahan")
     }
   }
 
@@ -153,8 +153,8 @@ const Pelanggan = () => {
       await deletePelanggan(id)
       await showSuccessAlert("Pelanggan berhasil dihapus")
       fetchData()
-    } catch {
-      showErrorAlert("Gagal", "Terjadi kesalahan saat menghapus data")
+    } catch (e) {
+      showErrorAlert("Gagal", e?.response?.data?.message || e?.message || "Terjadi kesalahan saat menghapus data")
     }
   }
 

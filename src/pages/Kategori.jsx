@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import { getKategori, createKategori, updateKategori, deleteKategori } from "../services/kategoriAPI";
-import { showSuccessAlert as showSuccess, showErrorAlert as showError, showConfirmAlert as showConfirm } from "../utils/alertUtils";
+import { showSuccessAlert as showSuccess, showErrorAlert as showError, showConfirmAlert as showConfirm, showDeleteConfirmAlert as showDeleteConfirm } from "../utils/alertUtils";
 import { MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 const Kategori = () => {
@@ -25,8 +25,8 @@ const Kategori = () => {
   const handleSubmit = async () => {
     if (!form.nama_kategori.trim()) return showError("Nama kategori wajib diisi");
     try {
-      if (editing?._id) {
-        await updateKategori(editing._id, { nama_kategori: form.nama_kategori, deskripsi: form.deskripsi });
+      if (editing?.id) {
+        await updateKategori(editing.id, { nama_kategori: form.nama_kategori, deskripsi: form.deskripsi });
         showSuccess("Kategori diperbarui");
       } else {
         await createKategori({ nama_kategori: form.nama_kategori, deskripsi: form.deskripsi });
@@ -46,8 +46,8 @@ const Kategori = () => {
   };
 
   const handleDelete = async (item) => {
-    const ok = await showConfirm(`Hapus kategori ${item.nama}?`);
-    if (!ok) return;
+    const res = await showDeleteConfirm(`Hapus Kategori`, `Anda akan menghapus kategori ${item.nama_kategori}. Tindakan ini tidak dapat dibatalkan.`);
+    if (!res?.isConfirmed) return;
     try {
       await deleteKategori(item._id || item.id);
       showSuccess("Kategori dihapus");

@@ -139,7 +139,7 @@ const Sidebar = ({ isOpen }) => {
         <div className="absolute bottom-4 left-4 right-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600 text-center">
-              Bisnis farid & restu
+              Bisnis farid & hilmi
             </p>
           </div>
         </div>
