@@ -50,7 +50,7 @@ const ModernDashboard = () => {
       let filteredPembayaran = user.role === 'driver'
         ? pembayaran.filter(item => item && item.id_driver === user.id)
         : user.role === 'kasir'
-        ? pembayaran.filter(item => item && item.id_kasir === user.id)
+        ? pembayaran.filter(item => item && item.kasir_id === user.id)
         : pembayaran;
 
       // Selaraskan dengan laporan: kecualikan ID tertentu (PMB005..PMB001)
@@ -76,9 +76,49 @@ const ModernDashboard = () => {
       const totalPendapatanToko = Math.max(0, totalPendapatanSemua - totalOngkirFiltered)
       
       const today = new Date().toISOString().split('T')[0]
-      const pembayaranHariIni = filteredPembayaran.filter(item => 
-        item?.tanggal && item.tanggal.startsWith(today)
-      ).length
+      const pembayaranHariIni = filteredPembayaran.filter(item => {
+        if (item?.tanggal && typeof item.tanggal === 'string') {
+          return item.tanggal.startsWith(today)
+        }
+        if (item?.created_at) {
+          const d = new Date(item.created_at)
+          return d.toDateString() === new Date().toDateString()
+        }
+        return false
+      }).length
+      // Pendapatan kasir minggu ini (7 hari terakhir) tanpa ongkir
+      const now = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      const pembayaranMingguIni = filteredPembayaran.filter(p => {
+        const d = new Date(p.tanggal || p.created_at || now);
+        return d >= sevenDaysAgo && d <= now;
+      });
+      const totalOngkirMingguIni = pembayaranMingguIni.reduce((sum, p) => {
+        const ong = ongkirByTransaksi.get(p.transaksi_id) || 0;
+        return sum + ong;
+      }, 0);
+      const totalBayarMingguIni = pembayaranMingguIni.reduce((sum, p) => sum + (p.total_bayar || 0), 0);
+      const pendapatanTokoMingguIni = Math.max(0, totalBayarMingguIni - totalOngkirMingguIni);
+
+      // Produk terjual hari ini (berdasarkan transaksi.items dan kasir)
+      const transaksiArrKasir = Array.isArray(transaksi) ? transaksi : [];
+      const transaksiKasirHariIni = transaksiArrKasir.filter(t => {
+        const isKasir = !user.id || t.kasir_id === user.id || user.role === 'admin';
+        if (!isKasir) return false;
+        if (t?.tanggal && typeof t.tanggal === 'string') {
+          return t.tanggal.startsWith(today);
+        }
+        if (t?.created_at) {
+          const d = new Date(t.created_at);
+          return d.toDateString() === new Date().toDateString();
+        }
+        return false;
+      });
+      const produkTerjualHariIni = transaksiKasirHariIni.reduce((sum, t) => {
+        const items = Array.isArray(t.items) ? t.items : [];
+        return sum + items.reduce((s, it) => s + (Number(it.jumlah) || 0), 0);
+      }, 0);
 
       // Hitung transaksi hari ini: berdasarkan field tanggal atau created_at
       const transaksiArr = Array.isArray(transaksi) ? transaksi : []
@@ -94,7 +134,7 @@ const ModernDashboard = () => {
         return false
       }).length
 
-      // Hitung produk terlaris: jika pembayaran sudah memuat produk, pakai itu; fallback ke transaksi.items
+      // Hitung produk terlaris: scope ke kasir bila role kasir
       const produkCount = {}
       const bayarDenganProduk = filteredPembayaran.filter(p => Array.isArray(p?.produk) && p.produk.length > 0)
       if (bayarDenganProduk.length > 0) {
@@ -106,7 +146,10 @@ const ModernDashboard = () => {
           })
         })
       } else {
-        (Array.isArray(transaksi) ? transaksi : []).forEach(t => {
+        const transaksiScope = (Array.isArray(transaksi) ? transaksi : []).filter(t => (
+          user.role !== 'kasir' || t.kasir_id === user.id
+        ))
+        transaksiScope.forEach(t => {
           if (Array.isArray(t?.items)) {
             t.items.forEach(item => {
               const key = item?.nama_produk || item?.produk_id
@@ -149,7 +192,9 @@ const ModernDashboard = () => {
         pembayaranHariIni,
         transaksiHariIni,
         produkTerlaris,
-        driverPendapatanHariIni
+        driverPendapatanHariIni,
+        pendapatanMingguIni: pendapatanTokoMingguIni,
+        produkTerjualHariIni
       })
     } catch (error) {
       console.error("Error fetching stats:", error)
@@ -255,6 +300,35 @@ const ModernDashboard = () => {
       changeType: 'increase'
     }
   ]
+  // Khusus kasir: tampilkan KPI kasir
+  const KasirSection = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Hari Ini (Toko)</h2>
+          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.totalPendapatan)}</p>
+        <p className="text-sm text-gray-500">Tanpa ongkir, milik kasir ini</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Minggu Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.pendapatanMingguIni || 0)}</p>
+        <p className="text-sm text-gray-500">7 hari terakhir, tanpa ongkir</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-900">Produk Terjual Hari Ini</h2>
+          <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{stats.produkTerjualHariIni || 0}</p>
+        <p className="text-sm text-gray-500">Total item oleh kasir ini</p>
+      </Card>
+    </div>
+  )
 
   // Khusus admin: tampilkan pendapatan hari ini (semua), daftar pendapatan driver hari ini
   const AdminSection = () => (
@@ -338,6 +412,11 @@ const ModernDashboard = () => {
         <AdminSection />
       )}
 
+      {/* Kasir section */}
+      {user.role === 'kasir' && (
+        <KasirSection />
+      )}
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Produk Terlaris */}
@@ -379,12 +458,14 @@ const ModernDashboard = () => {
           )}
         </Card>
 
-        {/* Recent Activity */}
-        <RecentActivity 
-          maxItems={5} 
-          showStats={false}
-          className=""
-        />
+        {/* Recent Activity: tampilkan hanya jika role sudah diketahui dan bukan kasir */}
+        {user.role && user.role !== 'kasir' && (
+          <RecentActivity 
+            maxItems={5} 
+            showStats={false}
+            className=""
+          />
+        )}
         </div>
     </div>
   )

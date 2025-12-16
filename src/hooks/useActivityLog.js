@@ -3,7 +3,9 @@ import { getAllPembayaran } from '../services/pembayaranAPI';
 import { listTransaksi } from '../services/transaksiAPI';
 import { listPengiriman } from '../services/pengirimanAPI';
 import { getAllPelanggan } from '../services/pelangganAPI';
+import { getAllProduk } from '../services/produkAPI';
 import { getAllKaryawan } from '../services/karyawanAPI';
+import { decodeJWT } from '../utils/jwtDecode';
 
 export const useActivityLog = (options = {}) => {
   const {
@@ -21,12 +23,18 @@ export const useActivityLog = (options = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const [pembayaran, transaksi, pengiriman, pelanggan, karyawan] = await Promise.all([
+      // Hindari panggilan karyawan untuk non-admin agar tidak mendapat 403
+      const token = localStorage.getItem('token');
+      const decoded = decodeJWT(token);
+      const role = decoded?.role || '';
+
+      const [pembayaran, transaksi, pengiriman, pelanggan, karyawan, produk] = await Promise.all([
         getAllPembayaran().catch(() => []),
         listTransaksi().catch(() => []),
         listPengiriman().catch(() => []),
         getAllPelanggan().catch(() => []),
-        getAllKaryawan().catch(() => [])
+        role === 'admin' ? getAllKaryawan().catch(() => []) : Promise.resolve([]),
+        getAllProduk().catch(() => [])
       ]);
 
       const pelangganMap = new Map((Array.isArray(pelanggan) ? pelanggan : []).map(p => [p.id, p.nama]));
@@ -60,12 +68,39 @@ export const useActivityLog = (options = {}) => {
             description,
             user: kasirNama,
             timestamp: p.tanggal || p.created_at || new Date().toISOString(),
-            details: { amount }
+            details: { amount, ongkir: Number(ship.ongkir || 0) }
           };
         });
 
+      // Aktivitas pelanggan baru (created_at hari ini)
+      const todayStr = new Date().toISOString().split('T')[0];
+      const activitiesCustomers = (Array.isArray(pelanggan) ? pelanggan : [])
+        .filter(c => c?.created_at && String(c.created_at).startsWith(todayStr))
+        .map(c => ({
+          id: `CUST-${c.id}`,
+          type: 'customer',
+          title: 'Pelanggan Baru Terdaftar',
+          description: `Pelanggan baru: ${c.nama} telah mendaftar ke sistem`,
+          user: 'Kasir',
+          timestamp: c.created_at,
+          details: {}
+        }));
+
+      // Aktivitas stok produk diperbarui (updated_at hari ini)
+      const activitiesStock = (Array.isArray(produk) ? produk : [])
+        .filter(pr => pr?.updated_at && String(pr.updated_at).startsWith(todayStr))
+        .map(pr => ({
+          id: `STOCK-${pr.id}`,
+          type: 'product',
+          title: 'Stok Produk Diperbarui',
+          description: `Stok ${pr.nama || pr.nama_produk || pr.id} telah diperbarui`,
+          user: 'Admin',
+          timestamp: pr.updated_at,
+          details: { stock: pr.stok }
+        }));
+
       // Sort by timestamp desc and limit
-      const normalized = activitiesFromPayments
+      const normalized = [...activitiesFromPayments, ...activitiesCustomers, ...activitiesStock]
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, maxActivities);
 

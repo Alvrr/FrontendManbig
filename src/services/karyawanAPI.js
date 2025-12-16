@@ -4,10 +4,12 @@ import axiosInstance from './axiosInstance';
 export const getAllKaryawan = async () => {
   try {
     const response = await axiosInstance.get('/users/karyawan');
-    console.log('API Response:', response.data); // Debug log
-    // Coba berbagai struktur response yang mungkin
-    return response.data.data || response.data || [];
+    return response.data?.data || response.data || [];
   } catch (error) {
+    if (error?.response?.status === 403) {
+      // Role tidak diizinkan (mis. kasir) -> kembalikan [] agar UI tetap jalan
+      return [];
+    }
     console.error('Error fetching karyawan:', error);
     throw error;
   }
@@ -17,8 +19,11 @@ export const getAllKaryawan = async () => {
 export const getActiveKaryawan = async () => {
   try {
     const response = await axiosInstance.get('/users/karyawan/active');
-    return response.data.data || [];
+    return response.data?.data || [];
   } catch (error) {
+    if (error?.response?.status === 403) {
+      return [];
+    }
     console.error('Error fetching active karyawan:', error);
     throw error;
   }
@@ -28,8 +33,11 @@ export const getActiveKaryawan = async () => {
 export const getKaryawanById = async (id) => {
   try {
     const response = await axiosInstance.get(`/users/karyawan/${id}`);
-    return response.data.data;
+    return response.data?.data;
   } catch (error) {
+    if (error?.response?.status === 403) {
+      return null;
+    }
     console.error('Error fetching karyawan by ID:', error);
     throw error;
   }

@@ -155,16 +155,23 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
                   </div>
                   
                   {/* Additional Details */}
-                  {activity.details && activity.details.amount && (
-                    <div className="mt-2 text-xs">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${
-                        activity.type === 'transaction' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {new Intl.NumberFormat('id-ID', { 
-                          style: 'currency', 
-                          currency: 'IDR' 
-                        }).format(activity.details.amount)}
-                      </span>
+                  {(activity.details && (activity.details.amount || activity.details.ongkir)) && (
+                    <div className="mt-2 text-xs flex items-center gap-2">
+                      {activity.details.amount ? (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${
+                          activity.type === 'transaction' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {new Intl.NumberFormat('id-ID', { 
+                            style: 'currency', 
+                            currency: 'IDR' 
+                          }).format(activity.details.amount)}
+                        </span>
+                      ) : null}
+                      {activity.details.ongkir ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full font-medium bg-purple-100 text-purple-800">
+                          Ongkir: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(activity.details.ongkir)}
+                        </span>
+                      ) : null}
                     </div>
                   )}
                 </div>
