@@ -14,8 +14,13 @@ export const listPengiriman = async () => {
 };
 
 export const getPengirimanById = async (id) => {
-  const res = await api.get(`/pengiriman/${id}`);
-  return res.data;
+  try {
+    const res = await api.get(`/pengiriman/${id}`);
+    return res.data;
+  } catch (err) {
+    if (err?.response?.status === 403) return null;
+    return null;
+  }
 };
 
 export const createPengiriman = async (payload) => {

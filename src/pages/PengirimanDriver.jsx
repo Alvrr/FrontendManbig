@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { listPengiriman, updatePengiriman } from '../services/pengirimanAPI';
+import { listPengiriman, updatePengiriman, getPengirimanById } from '../services/pengirimanAPI';
 import { showTimedSuccessAlert, showErrorAlert, showConfirmAlert } from '../utils/alertUtils';
 import { getTransaksiById } from '../services/transaksiAPI';
 import { formatRupiah } from '../utils/currency';
@@ -72,9 +72,8 @@ export default function PengirimanDriver() {
     setExpandedId(id);
     if (details[id]) return;
     try {
-      const trx = await getTransaksiById(p.transaksi_id);
-      const items = Array.isArray(trx?.items) ? trx.items : [];
-      setDetails(prev => ({ ...prev, [id]: { ...trx, items } }));
+      const detail = await getPengirimanById(id);
+      setDetails(prev => ({ ...prev, [id]: detail || {} }));
     } catch (e) {
       // ignore fetch error silently
     }
@@ -126,8 +125,8 @@ export default function PengirimanDriver() {
                     <div className="text-gray-600">Memuat detail...</div>
                   ) : (
                     <div className="space-y-1">
-                      <div><span className="font-medium">Pelanggan:</span> {details[p.id]?.pelanggan_id || '-'}</div>
-                      <div><span className="font-medium">Total:</span> {formatRupiah(details[p.id]?.total || 0)}</div>
+                      <div><span className="font-medium">Pelanggan:</span> {details[p.id]?.pelanggan_nama || details[p.id]?.pelanggan_id || '-'}</div>
+                      <div><span className="font-medium">Total:</span> {formatRupiah(details[p.id]?.total_toko ?? details[p.id]?.total ?? 0)}</div>
                         <div className="font-medium">Item:</div>
                         <ul className="list-disc pl-5">
                           {(Array.isArray(details[p.id]?.items) ? details[p.id].items : []).map((it, idx) => (
