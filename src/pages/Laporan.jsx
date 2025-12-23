@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns"
 import { id } from "date-fns/locale"
 import Swal from 'sweetalert2'
+import axiosInstance from "../services/axiosInstance"
 import { decodeJWT } from "../utils/jwtDecode"
 import { getAllPembayaran } from "../services/pembayaranAPI"
 import { listTransaksi } from "../services/transaksiAPI"
@@ -235,13 +236,48 @@ function Laporan() {
 
     if (result.isConfirmed) {
       try {
-        const csvContent = generateExcelContent()
-        downloadExcel(csvContent, `laporan-transaksi-${format(new Date(), 'yyyy-MM-dd')}.csv`)
+        // Tentukan parameter periode berdasarkan filter UI
+        let params = {}
+        if (filterType === 'custom' && customDateStart && customDateEnd) {
+          params = { start: customDateStart, end: customDateEnd }
+        } else if (filterType === 'month' && selectedMonth) {
+          const [year, month] = selectedMonth.split('-')
+          const startDate = startOfMonth(new Date(parseInt(year), parseInt(month) - 1))
+          const endDate = endOfMonth(new Date(parseInt(year), parseInt(month) - 1))
+          params = {
+            start: format(startDate, 'yyyy-MM-dd'),
+            end: format(endDate, 'yyyy-MM-dd')
+          }
+        } else if (filterType === 'year' && selectedYear) {
+          const startDate = startOfYear(new Date(parseInt(selectedYear), 0))
+          const endDate = endOfYear(new Date(parseInt(selectedYear), 0))
+          params = {
+            start: format(startDate, 'yyyy-MM-dd'),
+            end: format(endDate, 'yyyy-MM-dd')
+          }
+        }
+
+        // Panggil backend Excel export (admin-only)
+        const response = await axiosInstance.get('/laporan/export/excel', {
+          responseType: 'blob',
+          params
+        })
+
+        // Buat file .xlsx dari blob
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.href = url
+        link.download = `laporan-transaksi-${format(new Date(), 'yyyy-MM-dd')}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
         
         Swal.fire({
           icon: "success",
           title: "Ekspor Berhasil!",
-          text: "Laporan telah berhasil diunduh",
+          text: "File Excel (.xlsx) berhasil diunduh",
           confirmButtonText: "OK",
           customClass: {
             confirmButton: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700",
@@ -253,88 +289,14 @@ function Laporan() {
         Swal.fire({
           icon: "error",
           title: "Gagal Ekspor",
-          text: "Terjadi kesalahan saat mengekspor data",
+          text: "Terjadi kesalahan saat mengekspor data Excel",
           confirmButtonText: "OK"
         })
       }
     }
   }
 
-  const generateExcelContent = () => {
-    const headers = [
-      'ID Transaksi', 'Tanggal', 'Waktu', 'Pelanggan', 'Kasir', 'Driver', 
-      'Jenis Pengiriman', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Subtotal',
-      'Ongkir', 'Total Bayar', 'Status'
-    ]
-    const csvRows = [headers.join(',')]
-
-    const karyawanMap = new Map(karyawan.map(u => [u.id, u.nama]))
-    const driverMap = new Map(drivers.map(d => [d.id, d.nama]))
-    filteredData.forEach(item => {
-      const pelangganDetail = pelanggan.find(p => p.id === (item.pelanggan_id || item.id_pelanggan))
-      const pelangganNama = pelangganDetail?.nama || item.nama_pelanggan || (item.pelanggan_id || '') || 'N/A'
-      const tanggal = item.tanggal ? format(new Date(item.tanggal), "dd/MM/yyyy") : 'N/A'
-      const waktu = item.tanggal ? format(new Date(item.tanggal), "HH:mm:ss") : 'N/A'
-
-      if (item.produk && item.produk.length > 0) {
-        // Satu baris per produk
-        item.produk.forEach(produk => {
-          const row = [
-            item.id || '',
-            tanggal,
-            waktu,
-            pelangganNama,
-            item.nama_kasir || karyawanMap.get(item.kasir_id) || 'N/A',
-            item.nama_driver || driverMap.get(item.driver_id) || 'N/A',
-            item.jenis_pengiriman || 'N/A',
-            `"${produk.nama_produk || produk.id_produk || 'N/A'}"`,
-            produk.jumlah || 0,
-            produk.harga || 0,
-            produk.subtotal || 0,
-            item.ongkir || 0,
-            item.total_bayar || 0,
-            item.status || 'N/A'
-          ]
-          csvRows.push(row.join(','))
-        })
-      } else {
-        // Jika tidak ada produk
-        const row = [
-          item.id || '',
-          tanggal,
-          waktu,
-          pelangganNama,
-          item.nama_kasir || karyawanMap.get(item.kasir_id) || item.kasir_id || 'N/A',
-          item.nama_driver || driverMap.get(item.driver_id) || item.driver_id || 'N/A',
-          item.jenis_pengiriman || 'N/A',
-          'N/A',
-          0,
-          0,
-          0,
-          item.ongkir || 0,
-          item.total_bayar || 0,
-          item.status || 'N/A'
-        ]
-        csvRows.push(row.join(','))
-      }
-    })
-
-    return csvRows.join('\\n')
-  }
-
-  const downloadExcel = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      link.setAttribute('download', filename)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-  }
+  // CSV client-side export dihapus, diganti dengan unduhan .xlsx dari backend
 
   const getPeriodText = () => {
     if (filterType === 'custom' && customDateStart && customDateEnd) {
