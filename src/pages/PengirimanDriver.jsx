@@ -40,13 +40,13 @@ export default function PengirimanDriver() {
   };
 
   const badge = (status) => {
-    const map = {
-      diproses: 'bg-yellow-100 text-yellow-800',
-      dikirim: 'bg-blue-100 text-blue-800',
-      selesai: 'bg-green-100 text-green-800',
-      batal: 'bg-red-100 text-red-800',
-    };
-    return <span className={`px-2 py-1 text-xs rounded ${map[status] || 'bg-gray-100 text-gray-800'}`}>{status}</span>;
+    const key = String(status || '').toLowerCase();
+    const cls =
+      key === 'diproses' ? 'badge badge-proses' :
+      key === 'dikirim' ? 'badge badge-dikirim' :
+      key === 'selesai' ? 'badge badge-selesai' :
+      key === 'batal' ? 'badge badge-batal' : 'badge border-white/10 text-white/80 bg-white/10';
+    return <span className={cls}>{status}</span>;
   };
 
   const canUpdate = (current, next) => {
@@ -80,16 +80,16 @@ export default function PengirimanDriver() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 text-white">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Pengiriman Saya</h1>
         <div className="flex gap-2">
-          <button className="px-3 py-1 text-sm bg-gray-100 rounded border" onClick={load}>Refresh</button>
+          <button className="px-3 py-1 text-sm rounded border border-white/20 bg-white/10 hover:bg-white/20 transition" onClick={load}>Refresh</button>
         </div>
       </div>
       <div className="flex gap-3 mb-4">
-        <input className="border rounded px-3 py-2 flex-1" placeholder="Cari ID atau Transaksi" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="border rounded px-3 py-2" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <input className="input-glass px-3 py-2 flex-1" placeholder="Cari ID atau Transaksi" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select className="input-glass px-3 py-2" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="semua">Semua Status</option>
           <option value="diproses">Diproses</option>
           <option value="dikirim">Dikirim</option>
@@ -98,31 +98,31 @@ export default function PengirimanDriver() {
         </select>
       </div>
       {loading ? (
-        <p>Memuat...</p>
+        <p className="text-white/80">Memuat...</p>
       ) : (
         <div className="space-y-3">
-          {filtered.length === 0 && <p>Tidak ada pengiriman.</p>}
+          {filtered.length === 0 && <p className="text-white/80">Tidak ada pengiriman.</p>}
           {filtered.map((p) => (
-            <div key={p.id} className="border rounded p-3">
+            <div key={p.id} className="border border-white/20 bg-white/5 rounded p-3 text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{p.id}</div>
-                  <div className="text-sm text-gray-600">Transaksi: {p.transaksi_id}</div>
-                  <div className="text-sm">Jenis: {p.jenis || '-'}</div>
-                  <div className="text-sm">Ongkir: {formatRupiah(p.ongkir || 0)}</div>
+                  <div className="text-sm text-white/80">Transaksi: {p.transaksi_id}</div>
+                  <div className="text-sm text-white/90">Jenis: {p.jenis || '-'}</div>
+                  <div className="text-sm text-white/90">Ongkir: {formatRupiah(p.ongkir || 0)}</div>
                   <div className="mt-1">{badge(p.status)}</div>
                 </div>
                 <div className="flex gap-2">
-                <button disabled={!canUpdate(p.status, 'dikirim')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'dikirim') ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'dikirim')}>Kirim</button>
-                <button disabled={!canUpdate(p.status, 'selesai')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'selesai') ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'selesai')}>Selesai</button>
-                <button disabled={!canUpdate(p.status, 'batal')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'batal') ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'batal')}>Batal</button>
-                  <button className="px-3 py-1 text-sm rounded bg-gray-100 border" onClick={() => toggleDetail(p)}>{expandedId === p.id ? 'Tutup' : 'Detail'}</button>
+                <button disabled={!canUpdate(p.status, 'dikirim')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'dikirim') ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'dikirim')}>Kirim</button>
+                <button disabled={!canUpdate(p.status, 'selesai')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'selesai') ? 'bg-green-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'selesai')}>Selesai</button>
+                <button disabled={!canUpdate(p.status, 'batal')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'batal') ? 'bg-red-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'batal')}>Batal</button>
+                  <button className="px-3 py-1 text-sm rounded border border-white/20 bg-white/10 hover:bg-white/20 transition" onClick={() => toggleDetail(p)}>{expandedId === p.id ? 'Tutup' : 'Detail'}</button>
               </div>
               </div>
               {expandedId === p.id && (
-                <div className="mt-3 bg-gray-50 border rounded p-3 text-sm">
+                <div className="mt-3 bg-white/5 border border-white/20 rounded p-3 text-sm text-white/90">
                   {!details[p.id] ? (
-                    <div className="text-gray-600">Memuat detail...</div>
+                    <div className="text-white/80">Memuat detail...</div>
                   ) : (
                     <div className="space-y-1">
                       <div><span className="font-medium">Pelanggan:</span> {details[p.id]?.pelanggan_nama || details[p.id]?.pelanggan_id || '-'}</div>

@@ -11,7 +11,7 @@ const DriverLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen flex bg-gradient-to-br from-[#22002e] via-[#3a0b4a] to-[#22002e]">
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} />
 

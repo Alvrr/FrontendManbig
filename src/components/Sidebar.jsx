@@ -91,11 +91,11 @@ const Sidebar = ({ isOpen }) => {
   )
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white shadow-lg transition-all duration-300 z-40 ${
+    <div className={`fixed left-0 top-0 h-full bg-[#1a0f24]/80 backdrop-blur-md border-r border-white/10 text-white shadow-lg transition-all duration-300 z-40 ${
       isOpen ? 'w-64' : 'w-20'
     }`}>
       {/* Logo */}
-      <div className="flex items-center justify-center h-16 border-b border-gray-200">
+      <div className="flex items-center justify-center h-16 border-b border-white/10">
         <div className="flex items-center space-x-3">
           <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 shadow-lg hover:shadow-2xl ring-1 ring-inset ring-white/20 dark:ring-white/10 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 flex items-center justify-center overflow-hidden transform-gpu transition-all duration-300 hover:scale-105 hover:-rotate-1">
             {/* Gloss overlay */}
@@ -141,7 +141,7 @@ const Sidebar = ({ isOpen }) => {
             </svg>
           </div>
           {isOpen && (
-            <span className="text-xl font-bold text-gray-800">Bisnis Grosir</span>
+            <span className="text-xl font-bold text-white">Bisnis Grosir</span>
           )}
         </div>
       </div>
@@ -159,8 +159,8 @@ const Sidebar = ({ isOpen }) => {
                   to={item.path}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
                     isActive
-                      ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-white/10 text-white border-l-2 border-fuchsia-400'
+                      : 'text-white/80 hover:bg-white/5 hover:text-white'
                   }`}
                 >
                   <Icon className="w-6 h-6 flex-shrink-0" />
@@ -177,8 +177,8 @@ const Sidebar = ({ isOpen }) => {
       {/* Bottom Section */}
       {isOpen && (
         <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600 text-center">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <p className="text-sm text-white/80 text-center">
               Manajemen Bisnis Grosir
             </p>
           </div>

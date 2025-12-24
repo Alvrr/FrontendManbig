@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+	/* Glassy surfaces for dark background */
+	.card-glass {
+		@apply bg-white/5 text-white border border-white/10 rounded-lg;
+	}
+	.btn-secondary-glass {
+		@apply border border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-md transition;
+	}
+	.input-glass {
+		@apply bg-white/10 border border-white/20 text-white placeholder-white/60 rounded-md focus:ring-2 focus:ring-pink-400 focus:border-transparent;
+	}
+	.table-glass {
+		@apply w-full text-left border border-white/10 rounded-lg overflow-hidden;
+	}
+	.thead-glass {
+		@apply bg-white/10 text-white/80;
+	}
+	.tbody-glass {
+		@apply divide-y divide-white/10;
+	}
+	.row-glass {
+		@apply odd:bg-white/[0.03] even:bg-white/[0.06] hover:bg-white/[0.10];
+	}
+	.badge {
+		@apply px-2 py-1 text-xs rounded border;
+	}
+	.badge-proses {
+		@apply bg-yellow-500/20 text-yellow-200 border-yellow-400/30;
+	}
+	.badge-dikirim {
+		@apply bg-blue-500/20 text-blue-200 border-blue-400/30;
+	}
+	.badge-selesai {
+		@apply bg-green-500/20 text-green-200 border-green-400/30;
+	}
+	.badge-batal {
+		@apply bg-red-500/20 text-red-200 border-red-400/30;
+	}
+}

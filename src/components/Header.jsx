@@ -89,21 +89,21 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   }
 
   return (
-    <header className={`fixed top-0 bg-white shadow-sm border-b border-gray-200 h-16 z-30 transition-all duration-300 ${
+    <header className={`fixed top-0 bg-[#1a0f24]/80 backdrop-blur-md border-b border-white/10 h-16 z-30 transition-all duration-300 ${
       isSidebarOpen ? 'left-64' : 'left-20'
-    } right-0`}>
+    } right-0 text-white`}>
       <div className="flex items-center justify-between h-full px-6">
         {/* Left side - Menu toggle */}
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
           
           <div className="hidden md:block">
-            <h1 className="text-lg font-semibold text-gray-800">
+            <h1 className="text-lg font-semibold text-white">
               {getDashboardTitle()}
             </h1>
           </div>
@@ -114,32 +114,32 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
           {/* User Menu */}
           <div className="flex items-center space-x-3" ref={dropdownRef}>
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-700">{getUserDisplayName()}</p>
-              <p className="text-xs text-gray-500">{getRoleDisplayName()}</p>
+              <p className="text-sm font-medium text-white">{getUserDisplayName()}</p>
+              <p className="text-xs text-white/70">{getRoleDisplayName()}</p>
             </div>
             <div className="relative">
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/10 transition-colors"
               >
-                <UserCircleIcon className="w-8 h-8 text-gray-400" />
-                <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <UserCircleIcon className="w-8 h-8 text-white/80" />
+                <ChevronDownIcon className={`w-4 h-4 text-white/70 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-[#1a0f24] text-white rounded-md shadow-lg border border-white/10 z-50">
                   <div className="py-1">
                     {/* Profile Info dalam dropdown (untuk mobile) */}
-                    <div className="px-4 py-2 border-b border-gray-200 sm:hidden">
-                      <p className="text-sm font-medium text-gray-700">{getUserDisplayName()}</p>
-                      <p className="text-xs text-gray-500">{getRoleDisplayName()}</p>
+                    <div className="px-4 py-2 border-b border-white/10 sm:hidden">
+                      <p className="text-sm font-medium text-white">{getUserDisplayName()}</p>
+                      <p className="text-xs text-white/70">{getRoleDisplayName()}</p>
                     </div>
                     
                     {/* Logout Button */}
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center space-x-2"
                     >
                       <ArrowRightOnRectangleIcon className="w-4 h-4" />
                       <span>Logout</span>

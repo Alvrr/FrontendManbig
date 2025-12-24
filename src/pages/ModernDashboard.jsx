@@ -8,7 +8,7 @@ import { listTransaksi } from '../services/transaksiAPI';
 import { getSaldoProduk, getMutasiByProduk } from '../services/stokAPI';
 import { getBestSellers } from '../services/laporanAPI';
 import { decodeJWT } from '../utils/jwtDecode';
-import Card from '../components/Card'
+import Card, { CardGlass } from '../components/Card'
 import RecentActivity from '../components/RecentActivity'
 import { 
   CubeIcon, 
@@ -445,68 +445,68 @@ const ModernDashboard = () => {
   // Khusus kasir: tampilkan KPI kasir
   const KasirSection = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Hari Ini (Toko)</h2>
-          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Pendapatan Hari Ini (Toko)</h2>
+          <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.totalPendapatan)}</p>
-        <p className="text-sm text-gray-500">Tanpa ongkir, milik kasir ini</p>
-      </Card>
-      <Card>
+        <p className="text-2xl font-bold text-white">{formatRupiah(stats.totalPendapatan)}</p>
+        <p className="text-sm text-white/70">Tanpa ongkir, milik kasir ini</p>
+      </CardGlass>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Minggu Ini</h2>
-          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Pendapatan Minggu Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.pendapatanMingguIni || 0)}</p>
-        <p className="text-sm text-gray-500">7 hari terakhir, tanpa ongkir</p>
-      </Card>
-      <Card>
+        <p className="text-2xl font-bold text-white">{formatRupiah(stats.pendapatanMingguIni || 0)}</p>
+        <p className="text-sm text-white/70">7 hari terakhir, tanpa ongkir</p>
+      </CardGlass>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Produk Terjual Hari Ini</h2>
-          <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Produk Terjual Hari Ini</h2>
+          <ShoppingBagIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{stats.produkTerjualHariIni || 0}</p>
-        <p className="text-sm text-gray-500">Total item oleh kasir ini</p>
-      </Card>
+        <p className="text-2xl font-bold text-white">{stats.produkTerjualHariIni || 0}</p>
+        <p className="text-sm text-white/70">Total item oleh kasir ini</p>
+      </CardGlass>
     </div>
   )
 
   // Khusus driver: tampilkan KPI driver
   const DriverSection = () => (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <Card>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Ongkir Hari Ini</h2>
-          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Ongkir Hari Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats?.driverKPI?.ongkirHariIni || 0)}</p>
-        <p className="text-sm text-gray-500">Pengiriman milik Anda</p>
-      </Card>
-      <Card>
+        <p className="text-2xl font-bold text-white">{formatRupiah(stats?.driverKPI?.ongkirHariIni || 0)}</p>
+        <p className="text-sm text-white/70">Pengiriman milik Anda</p>
+      </CardGlass>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Ongkir Minggu Ini</h2>
-          <BanknotesIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Ongkir Minggu Ini</h2>
+          <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats?.driverKPI?.ongkirMingguIni || 0)}</p>
-        <p className="text-sm text-gray-500">7 hari terakhir</p>
-      </Card>
-      <Card>
+        <p className="text-2xl font-bold text-white">{formatRupiah(stats?.driverKPI?.ongkirMingguIni || 0)}</p>
+        <p className="text-sm text-white/70">7 hari terakhir</p>
+      </CardGlass>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Selesai Hari Ini</h2>
-          <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Selesai Hari Ini</h2>
+          <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{stats?.driverKPI?.pengirimanSelesaiHariIni || 0}</p>
-        <p className="text-sm text-gray-500">Pengiriman Anda dengan status selesai</p>
-      </Card>
-      <Card>
+        <p className="text-2xl font-bold text-white">{stats?.driverKPI?.pengirimanSelesaiHariIni || 0}</p>
+        <p className="text-sm text-white/70">Pengiriman Anda dengan status selesai</p>
+      </CardGlass>
+      <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Pengiriman Aktif</h2>
-          <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Pengiriman Aktif</h2>
+          <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-gray-900">{stats?.driverKPI?.pengirimanAktif || 0}</p>
-        <p className="text-sm text-gray-500">Belum selesai</p>
-      </Card>
+        <p className="text-2xl font-bold text-white">{stats?.driverKPI?.pengirimanAktif || 0}</p>
+        <p className="text-sm text-white/70">Belum selesai</p>
+      </CardGlass>
     </div>
   )
 
@@ -514,53 +514,53 @@ const ModernDashboard = () => {
   const GudangSection = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
+        <CardGlass>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Produk Stok Kritis</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Produk Stok Kritis</h2>
+            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats?.gudangLowStock?.length || 0}</p>
-          <p className="text-sm text-gray-500">Stok ≤ {stats?.gudangThreshold}</p>
-        </Card>
-        <Card>
+          <p className="text-2xl font-bold text-white">{stats?.gudangLowStock?.length || 0}</p>
+          <p className="text-sm text-white/70">Stok ≤ {stats?.gudangThreshold}</p>
+        </CardGlass>
+        <CardGlass>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Update Stok Hari Ini</h2>
-            <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Update Stok Hari Ini</h2>
+            <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats?.gudangStockUpdatesToday?.length || 0}</p>
-          <p className="text-sm text-gray-500">Produk dengan perubahan stok</p>
-        </Card>
-        <Card>
+          <p className="text-2xl font-bold text-white">{stats?.gudangStockUpdatesToday?.length || 0}</p>
+          <p className="text-sm text-white/70">Produk dengan perubahan stok</p>
+        </CardGlass>
+        <CardGlass>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Total Produk</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Total Produk</h2>
+            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalProduk}</p>
-          <p className="text-sm text-gray-500">Semua produk terdata</p>
-        </Card>
+          <p className="text-2xl font-bold text-white">{stats.totalProduk}</p>
+          <p className="text-sm text-white/70">Semua produk terdata</p>
+        </CardGlass>
       </div>
 
-      <Card>
+      <CardGlass>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Daftar Restock</h2>
-          <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Daftar Restock</h2>
+          <ShoppingBagIcon className="w-5 h-5 text-white/60" />
         </div>
         {stats?.gudangLowStock?.length ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full table-glass">
+              <thead className="thead-glass">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rekomendasi</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Produk</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Stok</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Rekomendasi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="tbody-glass">
                 {stats.gudangLowStock.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{p.nama || p.nama_produk || p.id}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{(stats?.gudangSaldoMap && (stats.gudangSaldoMap[p.id] ?? stats.gudangSaldoMap[p._id] ?? stats.gudangSaldoMap[p.ID])) ?? (p.stok ?? p.stock ?? 0)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">Restock ke {(() => { const sid = p.id || p._id || p.ID; const saldo = Number((stats?.gudangSaldoMap && (stats.gudangSaldoMap[sid])) ?? (p.stok ?? p.stock ?? 0)); return Math.max(saldo, stats.gudangThreshold) + 10; })()}</td>
+                  <tr key={p.id} className="row-glass">
+                    <td className="px-4 py-3 text-sm text-white/90">{p.nama || p.nama_produk || p.id}</td>
+                    <td className="px-4 py-3 text-sm text-white/90">{(stats?.gudangSaldoMap && (stats.gudangSaldoMap[p.id] ?? stats.gudangSaldoMap[p._id] ?? stats.gudangSaldoMap[p.ID])) ?? (p.stok ?? p.stock ?? 0)}</td>
+                    <td className="px-4 py-3 text-sm text-white/80">Restock ke {(() => { const sid = p.id || p._id || p.ID; const saldo = Number((stats?.gudangSaldoMap && (stats.gudangSaldoMap[sid])) ?? (p.stok ?? p.stock ?? 0)); return Math.max(saldo, stats.gudangThreshold) + 10; })()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -568,11 +568,11 @@ const ModernDashboard = () => {
           </div>
         ) : (
           <div className="text-center py-8">
-            <ShoppingBagIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500">Tidak ada produk stok kritis</p>
+            <ShoppingBagIcon className="w-12 h-12 text-white/60 mx-auto mb-3" />
+            <p className="text-white/70">Tidak ada produk stok kritis</p>
           </div>
         )}
-      </Card>
+      </CardGlass>
     </div>
   )
 
@@ -604,11 +604,11 @@ const ModernDashboard = () => {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-white">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Selamat datang di sistem manajemen bisnis mikro</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+          <p className="text-white/80">Selamat datang di sistem manajemen bisnis mikro</p>
         </div>
       </div>
 
@@ -617,36 +617,36 @@ const ModernDashboard = () => {
         {displayedStatsCards.map((stat, index) => {
           const Icon = stat.icon
           return (
-            <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
+            <CardGlass key={index} className="hover:shadow-lg transition-shadow duration-200">
               <div className="flex items-center p-1">
-                <div className={`${stat.bgColor} p-3 rounded-lg flex-shrink-0`}>
-                  <Icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.color}`} />
+                <div className={`bg-white/10 p-3 rounded-lg flex-shrink-0`}>
+                  <Icon className={`w-5 h-5 md:w-6 md:h-6 text-white`} />
                 </div>
                 <div className="ml-3 md:ml-4 flex-1 min-w-0">
-                  <p className="text-xs md:text-sm font-medium text-gray-600 truncate">{stat.title}</p>
+                  <p className="text-xs md:text-sm font-medium text-white/80 truncate">{stat.title}</p>
                   <div className="flex items-center mt-1">
                     <p 
-                      className="text-base md:text-lg lg:text-xl font-semibold text-gray-900 truncate"
+                      className="text-base md:text-lg lg:text-xl font-semibold text-white truncate"
                       title={stat.fullValue || stat.value}
                     >
                       {stat.value}
                     </p>
                     {stat.change && (
                       <span className={`ml-2 text-xs md:text-sm font-medium flex-shrink-0 ${
-                        stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
+                        stat.changeType === 'increase' ? 'text-green-300' : 'text-red-300'
                       }`}>
                         {stat.change}
                       </span>
                     )}
                   </div>
                   {stat.fullValue && stat.fullValue !== stat.value && (
-                    <p className="text-xs text-gray-500 mt-1 truncate" title={stat.fullValue}>
+                    <p className="text-xs text-white/70 mt-1 truncate" title={stat.fullValue}>
                       {stat.fullValue}
                     </p>
                   )}
                 </div>
               </div>
-            </Card>
+            </CardGlass>
           )
         })}
       </div>
@@ -677,10 +677,10 @@ const ModernDashboard = () => {
       {user.role !== 'driver' && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Produk Terlaris */}
-        <Card>
+        <CardGlass>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Produk Terlaris</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Produk Terlaris</h2>
+            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
           </div>
           
           {stats.produkTerlaris.length > 0 ? (
@@ -688,13 +688,13 @@ const ModernDashboard = () => {
               {stats.produkTerlaris.map((produk, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                    <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">{index + 1}</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{produk.nama}</span>
+                    <span className="text-sm font-medium text-white/90">{produk.nama}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div className="w-24 bg-white/15 rounded-full h-2">
                       <div 
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                         style={{ 
@@ -702,18 +702,18 @@ const ModernDashboard = () => {
                         }}
                       ></div>
                     </div>
-                    <span className="text-sm font-semibold text-gray-700">{produk.jumlah}</span>
+                    <span className="text-sm font-semibold text-white/90">{produk.jumlah}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-8">
-              <ShoppingBagIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">Belum ada data penjualan produk</p>
+              <ShoppingBagIcon className="w-12 h-12 text-white/60 mx-auto mb-3" />
+              <p className="text-white/70">Belum ada data penjualan produk</p>
             </div>
           )}
-        </Card>
+        </CardGlass>
 
         {/* Recent Activity: tampilkan hanya untuk admin */}
         {user.role === 'admin' && (

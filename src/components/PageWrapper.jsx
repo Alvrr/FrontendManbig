@@ -7,13 +7,13 @@ const PageWrapper = ({
   action = null 
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-white">
       {/* Page Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-2xl font-bold text-white">{title}</h1>
           {description && (
-            <p className="text-gray-600 mt-1">{description}</p>
+            <p className="text-white/80 mt-1">{description}</p>
           )}
         </div>
         {action && (
