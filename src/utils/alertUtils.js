@@ -1,13 +1,13 @@
 import Swal from 'sweetalert2';
 
-// Konfigurasi default untuk SweetAlert2 selaras dengan tema Login (ungu/pink)
+// Konfigurasi default untuk SweetAlert2 selaras dengan tema dark-blue
 const defaultConfig = {
   buttonsStyling: false,
-  background: '#1a0f24',
+  background: '#020617',
   color: '#ffffff',
   customClass: {
-    popup: 'bg-[#1a0f24] text-white border border-white/10 shadow-2xl',
-    confirmButton: 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold mr-2',
+    popup: 'bg-slate-950 text-white border border-white/10 shadow-2xl',
+    confirmButton: 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold mr-2',
     cancelButton: 'bg-white/10 text-white px-6 py-2 rounded-full border border-white/20 hover:bg-white/20 transition font-medium',
     denyButton: 'bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition font-semibold mr-2'
   }
@@ -23,7 +23,7 @@ export const showSuccessAlert = (title, text = '') => {
     ...defaultConfig,
     customClass: {
       ...defaultConfig.customClass,
-      confirmButton: 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
+      confirmButton: 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
     }
   });
 };
@@ -53,7 +53,7 @@ export const showWarningAlert = (title, text = '') => {
     ...defaultConfig,
     customClass: {
       ...defaultConfig.customClass,
-      confirmButton: 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
+      confirmButton: 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
     }
   });
 };
@@ -68,7 +68,7 @@ export const showInfoAlert = (title, text = '') => {
     ...defaultConfig,
     customClass: {
       ...defaultConfig.customClass,
-      confirmButton: 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
+      confirmButton: 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold'
     }
   });
 };
@@ -85,7 +85,7 @@ export const showConfirmAlert = (title, text = '', confirmButtonText = 'Ya', can
     ...defaultConfig,
     customClass: {
       ...defaultConfig.customClass,
-      confirmButton: 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold mr-2',
+      confirmButton: 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white px-6 py-2 rounded-full shadow hover:opacity-95 transition font-semibold mr-2',
       cancelButton: 'bg-white/10 text-white px-6 py-2 rounded-full border border-white/20 hover:bg-white/20 transition font-medium'
     }
   });

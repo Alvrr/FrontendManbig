@@ -168,7 +168,7 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
                         </span>
                       ) : null}
                       {activity.details.ongkir ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full font-medium bg-fuchsia-500/20 text-fuchsia-200">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full font-medium bg-sky-500/20 text-sky-200">
                           Ongkir: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(activity.details.ongkir)}
                         </span>
                       ) : null}

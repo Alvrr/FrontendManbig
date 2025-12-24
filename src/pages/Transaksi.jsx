@@ -174,15 +174,15 @@ export default function Transaksi() {
     >
       <Card className="mb-4">
         <div className="flex gap-3">
-          <input className="border rounded px-3 py-2 flex-1" placeholder="Cari ID transaksi" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="input-glass px-3 py-2 flex-1" placeholder="Cari ID transaksi" value={search} onChange={e => setSearch(e.target.value)} />
           <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={load}>Refresh</button>
         </div>
       </Card>
       <Card>
         {loading ? <p>Memuat...</p> : (
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border">
-              <thead className="bg-gray-50">
+            <table className="table-glass">
+              <thead className="thead-glass">
                 <tr>
                   <th className="px-4 py-2 text-left">ID</th>
                   <th className="px-4 py-2 text-left">Kasir</th>
@@ -194,16 +194,16 @@ export default function Transaksi() {
                   <th className="px-4 py-2 text-left">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="tbody-glass">
                 {dataToDisplay.map(t => (
-                  <tr key={t.id} className="border-t">
-                    <td className="px-4 py-2">{t.id}</td>
-                    <td className="px-4 py-2">{t.kasir_id}</td>
-                    <td className="px-4 py-2">{t.pelanggan_id}</td>
-                    <td className="px-4 py-2">{t.total_produk}</td>
-                    <td className="px-4 py-2">{formatRupiah(t.total_harga)}</td>
-                    <td className="px-4 py-2">{t.status}</td>
-                    <td className="px-4 py-2">{t.created_at ? new Date(t.created_at).toLocaleString('id-ID') : '-'}</td>
+                  <tr key={t.id} className="row-glass">
+                    <td className="px-4 py-2 text-white/90">{t.id}</td>
+                    <td className="px-4 py-2 text-white/90">{t.kasir_id}</td>
+                    <td className="px-4 py-2 text-white/90">{t.pelanggan_id}</td>
+                    <td className="px-4 py-2 text-white/90">{t.total_produk}</td>
+                    <td className="px-4 py-2 text-white/90">{formatRupiah(t.total_harga)}</td>
+                    <td className="px-4 py-2 text-white/90">{t.status}</td>
+                    <td className="px-4 py-2 text-white/80">{t.created_at ? new Date(t.created_at).toLocaleString('id-ID') : '-'}</td>
                     <td className="px-4 py-2">
                       <div className="flex gap-2">
                         <button className="px-3 py-1 text-sm bg-red-600 text-white rounded" onClick={() => handleDelete(t.id)}>Hapus</button>
@@ -212,7 +212,7 @@ export default function Transaksi() {
                   </tr>
                 ))}
                 {dataToDisplay.length === 0 && (
-                  <tr><td className="px-4 py-6 text-center text-gray-500" colSpan={7}>Tidak ada data</td></tr>
+                  <tr><td className="px-4 py-6 text-center text-white/70" colSpan={7}>Tidak ada data</td></tr>
                 )}
               </tbody>
             </table>
@@ -222,15 +222,15 @@ export default function Transaksi() {
 
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold">Buat Transaksi</h3>
+          <div className="card-glass backdrop-blur-md shadow-xl w-full max-w-3xl">
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-white">Buat Transaksi</h3>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Pelanggan</label>
-                  <select className="w-full border rounded px-3 py-2" value={form.pelanggan_id} onChange={e => setForm({ ...form, pelanggan_id: e.target.value })}>
+                  <label className="block text-sm font-medium mb-1 text-white/80">Pelanggan</label>
+                  <select className="w-full input-glass px-3 py-2" value={form.pelanggan_id} onChange={e => setForm({ ...form, pelanggan_id: e.target.value })}>
                     <option value="">-- Pilih Pelanggan --</option>
                     {pelangganList.map(p => (
                       <option key={p.id} value={p.id}>{p.nama || p.id}</option>
@@ -238,8 +238,8 @@ export default function Transaksi() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Kategori</label>
-                  <select className="w-full border rounded px-3 py-2" value={form.kategori_id} onChange={e => setForm({ ...form, kategori_id: e.target.value })}>
+                  <label className="block text-sm font-medium mb-1 text-white/80">Kategori</label>
+                  <select className="w-full input-glass px-3 py-2" value={form.kategori_id} onChange={e => setForm({ ...form, kategori_id: e.target.value })}>
                     <option value="">-- Pilih Kategori --</option>
                     {kategoriList.map(k => (
                       <option key={k._id || k.id} value={k._id || k.id}>{k.nama_kategori || k.nama}</option>
@@ -251,8 +251,8 @@ export default function Transaksi() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Produk</label>
-                  <select className="w-full border rounded px-3 py-2" value={form.produk_id} onChange={e => setForm({ ...form, produk_id: e.target.value })}>
+                  <label className="block text-sm font-medium mb-1 text-white/80">Produk</label>
+                  <select className="w-full input-glass px-3 py-2" value={form.produk_id} onChange={e => setForm({ ...form, produk_id: e.target.value })}>
                     <option value="">-- Pilih Produk --</option>
                     {produkFiltered.map(p => (
                       <option key={p.id} value={p.id}>{p.nama_produk || p.nama || p.id}</option>
@@ -260,12 +260,12 @@ export default function Transaksi() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Stok</label>
-                  <input className="w-full border rounded px-3 py-2 bg-gray-100" value={stokNow} readOnly />
+                  <label className="block text-sm font-medium mb-1 text-white/80">Stok</label>
+                  <input className="w-full input-glass px-3 py-2 opacity-80" value={stokNow} readOnly />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Jumlah</label>
-                  <input type="number" min={1} className="w-full border rounded px-3 py-2" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
+                  <label className="block text-sm font-medium mb-1 text-white/80">Jumlah</label>
+                  <input type="number" min={1} className="w-full input-glass px-3 py-2" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
                 </div>
                 <div>
                   <button onClick={addToCart} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Tambah</button>
@@ -274,8 +274,8 @@ export default function Transaksi() {
 
               <Card>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border">
-                    <thead className="bg-gray-50">
+                  <table className="table-glass">
+                    <thead className="thead-glass">
                       <tr>
                         <th className="px-4 py-2 text-left">Produk</th>
                         <th className="px-4 py-2 text-left">Harga</th>
@@ -283,17 +283,17 @@ export default function Transaksi() {
                         <th className="px-4 py-2 text-left">Subtotal</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="tbody-glass">
                       {cart.map((i, idx) => (
-                        <tr key={idx} className="border-t">
-                          <td className="px-4 py-2">{i.nama_produk}</td>
-                          <td className="px-4 py-2">{formatRupiah(i.harga)}</td>
-                          <td className="px-4 py-2">{i.jumlah}</td>
-                          <td className="px-4 py-2">{formatRupiah(i.subtotal)}</td>
+                        <tr key={idx} className="row-glass">
+                          <td className="px-4 py-2 text-white/90">{i.nama_produk}</td>
+                          <td className="px-4 py-2 text-white/90">{formatRupiah(i.harga)}</td>
+                          <td className="px-4 py-2 text-white/90">{i.jumlah}</td>
+                          <td className="px-4 py-2 text-white/90">{formatRupiah(i.subtotal)}</td>
                         </tr>
                       ))}
                       {cart.length === 0 && (
-                        <tr><td className="px-4 py-4 text-center text-gray-500" colSpan={4}>Belum ada item</td></tr>
+                        <tr><td className="px-4 py-4 text-center text-white/70" colSpan={4}>Belum ada item</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -304,8 +304,8 @@ export default function Transaksi() {
                 </div>
               </Card>
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded" onClick={() => { setShowPopup(false); resetCart(); }}>Batal</button>
+            <div className="p-6 border-t border-white/10 flex justify-end gap-3">
+              <button className="btn-secondary-glass px-4 py-2" onClick={() => { setShowPopup(false); resetCart(); }}>Batal</button>
               <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onClick={handleCreate}>Simpan</button>
             </div>
           </div>

@@ -138,7 +138,7 @@ const Pembayaran = () => {
       cancelButtonText: "Batal",
       customClass: {
         confirmButton: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
-        cancelButton: "bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500",
+        cancelButton: "btn-secondary-glass px-4 py-2",
       },
       buttonsStyling: false,
     });
@@ -249,7 +249,7 @@ const Pembayaran = () => {
       cancelButtonText: "Batal",
       customClass: {
         confirmButton: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700",
-        cancelButton: "bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500",
+        cancelButton: "btn-secondary-glass px-4 py-2",
       },
       buttonsStyling: false,
     });
@@ -324,7 +324,7 @@ const Pembayaran = () => {
       <Card className="mb-6">
         <div className="flex items-center space-x-4">
           <div className="relative flex-1 max-w-md">
-            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
               placeholder="Cari ID Pembayaran..."
@@ -333,7 +333,7 @@ const Pembayaran = () => {
                 setSearchId(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+              className="input-glass w-full pl-10 pr-4 py-2"
             />
           </div>
         </div>
@@ -344,30 +344,30 @@ const Pembayaran = () => {
 
 
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-            <thead className="bg-gray-50">
+          <table className="table-glass min-w-full">
+            <thead className="thead-glass">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Transaksi</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Metode</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Total Bayar</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Tanggal</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Aksi</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Transaksi</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Metode</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Total Bayar</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Tanggal</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="tbody-glass">
               {paginatedData.map((item) => {
                 // Disesuaikan: tidak lagi menampilkan pelanggan/driver pada tabel pembayaran
                 
                 return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.transaksi_id}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.metode || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.total_bayar)}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.status || '-'}</td>
+                  <tr key={item.id} className="row-glass">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white/90">{item.id}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.transaksi_id}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.metode || '-'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{formatRupiah(item.total_bayar)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.status || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
                       {/* Tombol Selesai - hanya untuk admin, kasir, atau driver yang ditugaskan */}
                         {(user.role === "admin" || user.role === "kasir") && 
@@ -399,7 +399,7 @@ const Pembayaran = () => {
               className={`px-3 py-1 border rounded-lg ${
                 page === currentPage 
                   ? "bg-blue-600 text-white border-blue-600" 
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  : "btn-secondary-glass"
               }`}
             >
               {page}
@@ -410,17 +410,17 @@ const Pembayaran = () => {
 
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-200 flex-shrink-0">
-              <h2 className="text-xl font-bold text-gray-900">Transaksi Baru</h2>
+          <div className="card-glass backdrop-blur-md rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-white/10 flex-shrink-0">
+              <h2 className="text-xl font-bold text-white">Transaksi Baru</h2>
             </div>
             
             <div className="p-6 overflow-y-auto flex-1">
             {/* Form sederhana sesuai skema pembayaran baru */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Transaksi</label>
+              <label className="block text-sm font-medium text-white/80 mb-2">Pilih Transaksi</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="input-glass w-full px-3 py-2"
                 value={form.transaksi_id}
                 onChange={(e) => setForm(f => ({ ...f, transaksi_id: e.target.value }))}
               >
@@ -435,17 +435,17 @@ const Pembayaran = () => {
             {/* Ringkasan total dan ongkir */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Total Transaksi</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50" value={formatRupiah(baseTotal)} readOnly />
+                <label className="block text-sm font-medium text-white/80 mb-2">Total Transaksi</label>
+                <input className="input-glass w-full px-3 py-2 opacity-70" value={formatRupiah(baseTotal)} readOnly />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ongkir</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50" value={formatRupiah(ongkir)} readOnly />
+                <label className="block text-sm font-medium text-white/80 mb-2">Ongkir</label>
+                <input className="input-glass w-full px-3 py-2 opacity-70" value={formatRupiah(ongkir)} readOnly />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Total Bayar</label>
+                <label className="block text-sm font-medium text-white/80 mb-2">Total Bayar</label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
+                  className="input-glass w-full px-3 py-2 opacity-70"
                   value={formatRupiah(form.total_bayar)}
                   readOnly
                 />
@@ -455,28 +455,28 @@ const Pembayaran = () => {
             <div className="mb-4">
               <label className="inline-flex items-center gap-2">
                 <input type="checkbox" checked={form.delivery} onChange={e => setForm(f => ({ ...f, delivery: e.target.checked }))} />
-                <span>Butuh Pengiriman (Delivery)</span>
+                <span className="text-white/80">Butuh Pengiriman (Delivery)</span>
               </label>
             </div>
             {form.delivery && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kendaraan</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.jenis_kendaraan} onChange={e => setForm(f => ({ ...f, jenis_kendaraan: e.target.value }))}>
+                  <label className="block text-sm font-medium text-white/80 mb-2">Jenis Kendaraan</label>
+                  <select className="input-glass w-full px-3 py-2" value={form.jenis_kendaraan} onChange={e => setForm(f => ({ ...f, jenis_kendaraan: e.target.value }))}>
                     <option value="mobil">Mobil</option>
                     <option value="motor">Motor</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Driver</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.driver_id} onChange={e => setForm(f => ({ ...f, driver_id: e.target.value }))}>
+                  <label className="block text-sm font-medium text-white/80 mb-2">Pilih Driver</label>
+                  <select className="input-glass w-full px-3 py-2" value={form.driver_id} onChange={e => setForm(f => ({ ...f, driver_id: e.target.value }))}>
                     <option value="">-- Pilih Driver --</option>
                     {driverList.map(d => (
                       <option key={d.id} value={d.id}>{d.nama || d.email || d.id}</option>
                     ))}
                   </select>
                   {/* Alamat Pelanggan tampil otomatis dari transaksi terpilih */}
-                  <div className="mt-2 text-sm text-gray-600">
+                  <div className="mt-2 text-sm text-white/70">
                     {(() => {
                       const trx = transaksiList.find(t => t.id === form.transaksi_id);
                       const pel = pelangganList.find(p => p.id === trx?.pelanggan_id);
@@ -494,9 +494,9 @@ const Pembayaran = () => {
               </div>
             )}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Metode</label>
+              <label className="block text-sm font-medium text-white/80 mb-2">Metode</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="input-glass w-full px-3 py-2"
                 value={form.metode}
                 onChange={(e) => setForm(f => ({ ...f, metode: e.target.value }))}
               >
@@ -509,14 +509,14 @@ const Pembayaran = () => {
 
             </div>
             
-            <div className="p-6 border-t border-gray-200 flex-shrink-0">
+            <div className="p-6 border-t border-white/10 flex-shrink-0">
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowPopup(false);
                     setForm({ transaksi_id: "", metode: "cash", total_bayar: 0 });
                   }}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium"
+                  className="btn-secondary-glass px-4 py-2 font-medium"
                 >
                   Batal
                 </button>

@@ -195,7 +195,7 @@ const Pelanggan = () => {
       <Card className="mb-6">
         <div className="flex items-center space-x-4">
           <div className="relative flex-1 max-w-md">
-            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
               placeholder="Cari nama, email, atau nomor HP..."
@@ -204,7 +204,7 @@ const Pelanggan = () => {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+              className="input-glass w-full pl-10 pr-4 py-2"
             />
           </div>
         </div>
@@ -213,25 +213,25 @@ const Pelanggan = () => {
       {/* Table */}
       <Card>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="table-glass min-w-full">
+            <thead className="thead-glass">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. HP</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alamat</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Nama</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">No. HP</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Alamat</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="tbody-glass">
               {paginatedData.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.no_hp}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{item.alamat}</td>
+                <tr key={item.id} className="row-glass">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white/90">{item.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{item.nama}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{item.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{item.no_hp}</td>
+                  <td className="px-6 py-4 text-sm text-white/90 max-w-xs truncate">{item.alamat}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     {user.role !== "driver" && (
                       <>
@@ -260,10 +260,10 @@ const Pelanggan = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t border-white/10">
             <button
               onClick={() => changePage(currentPage - 1)}
-              className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary-glass px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={currentPage === 1}
             >
               Previous
@@ -274,8 +274,8 @@ const Pelanggan = () => {
                 onClick={() => changePage(i + 1)}
                 className={`px-3 py-2 text-sm rounded-lg ${
                   currentPage === i + 1
-                    ? "bg-blue-600 text-white"
-                    : "bg-white border border-gray-300 hover:bg-gray-50"
+                    ? "bg-sky-600 text-white"
+                    : "btn-secondary-glass"
                 }`}
               >
                 {i + 1}
@@ -283,7 +283,7 @@ const Pelanggan = () => {
             ))}
             <button
               onClick={() => changePage(currentPage + 1)}
-              className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary-glass px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={currentPage === totalPages}
             >
               Next
@@ -295,16 +295,16 @@ const Pelanggan = () => {
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+          <div className="card-glass backdrop-blur-md rounded-lg shadow-xl w-full max-w-md mx-4">
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-white">
                   {isEdit ? "Edit Pelanggan" : "Tambah Pelanggan"}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-white/60 hover:text-white"
                 >
                   <span className="sr-only">Close</span>
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -315,42 +315,42 @@ const Pelanggan = () => {
 
               {isEdit && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ID Pelanggan</label>
+                  <label className="block text-sm font-medium text-white/80 mb-1">ID Pelanggan</label>
                   <input
                     type="text"
                     value={form.id}
                     disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                    className="input-glass w-full px-3 py-2 opacity-70 cursor-not-allowed"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                <label className="block text-sm font-medium text-white/80 mb-1">Nama Lengkap</label>
                 <input
                   type="text"
                   value={form.nama}
                   onChange={(e) => setForm({ ...form, nama: e.target.value })}
                   placeholder="Contoh: Ahmad Suherman"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input-glass w-full px-3 py-2"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-white/80 mb-1">Email</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="Contoh: ahmad.suherman@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input-glass w-full px-3 py-2"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
+                <label className="block text-sm font-medium text-white/80 mb-1">Nomor HP</label>
                 <input
                   type="tel"
                   value={form.no_hp}
@@ -359,7 +359,7 @@ const Pelanggan = () => {
                     setForm({ ...form, no_hp: value })
                   }}
                   placeholder="Contoh: 081234567890 (minimal 10 digit)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input-glass w-full px-3 py-2"
                   required
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -367,12 +367,12 @@ const Pelanggan = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                <label className="block text-sm font-medium text-white/80 mb-1">Alamat</label>
                 <textarea
                   value={form.alamat}
                   onChange={(e) => setForm({ ...form, alamat: e.target.value })}
                   placeholder="Contoh: Jl. Merdeka No. 123, RT 05/RW 03, Kelurahan Sukamaju, Kecamatan Bandung Utara, Kota Bandung, Jawa Barat 40123"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input-glass w-full px-3 py-2"
                   rows="3"
                   required
                 />
@@ -382,7 +382,7 @@ const Pelanggan = () => {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="btn-secondary-glass px-4 py-2 text-sm font-medium"
                 >
                   Batal
                 </button>

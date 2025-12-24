@@ -89,9 +89,9 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   }
 
   return (
-    <header className={`fixed top-0 bg-[#1a0f24]/80 backdrop-blur-md border-b border-white/10 h-16 z-30 transition-all duration-300 ${
-      isSidebarOpen ? 'left-64' : 'left-20'
-    } right-0 text-white`}>
+    <header className={`fixed top-0 left-0 right-0 bg-slate-950/70 backdrop-blur-md border-b border-white/10 h-16 z-30 transition-all duration-300 text-white ${
+      isSidebarOpen ? 'pl-64' : 'pl-20'
+    }`}>
       <div className="flex items-center justify-between h-full px-6">
         {/* Left side - Menu toggle */}
         <div className="flex items-center space-x-4">
@@ -128,7 +128,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#1a0f24] text-white rounded-md shadow-lg border border-white/10 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-slate-950 text-white rounded-md shadow-lg border border-white/10 z-50">
                   <div className="py-1">
                     {/* Profile Info dalam dropdown (untuk mobile) */}
                     <div className="px-4 py-2 border-b border-white/10 sm:hidden">

@@ -581,23 +581,23 @@ const ModernDashboard = () => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Pendapatan Driver Hari Ini</h2>
-          <UsersIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-white">Pendapatan Driver Hari Ini</h2>
+          <UsersIcon className="w-5 h-5 text-white/60" />
         </div>
         {stats.driverPendapatanHariIni.length > 0 ? (
           <div className="space-y-2">
             {stats.driverPendapatanHariIni.map((d, i) => (
               <div key={d.driver_id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">{i+1}.</span>
-                  <span className="text-sm text-gray-900">{d.driver_id}</span>
+                  <span className="text-sm font-medium text-white/70">{i+1}.</span>
+                  <span className="text-sm text-white/90">{d.driver_id}</span>
                 </div>
-                <span className="text-sm font-semibold">{formatRupiah(d.total)}</span>
+                <span className="text-sm font-semibold text-white">{formatRupiah(d.total)}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">Belum ada pendapatan driver hari ini</p>
+          <p className="text-sm text-white/70">Belum ada pendapatan driver hari ini</p>
         )}
       </Card>
     </div>

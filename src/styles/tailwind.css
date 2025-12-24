@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+	/* Best-effort styling for native select dropdowns on dark UI */
+	select {
+		color-scheme: dark;
+	}
+	select option,
+	select optgroup {
+		@apply bg-slate-900 text-white;
+	}
+}
+
 @layer components {
 	/* Glassy surfaces for dark background */
 	.card-glass {
@@ -11,7 +22,7 @@
 		@apply border border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-md transition;
 	}
 	.input-glass {
-		@apply bg-white/10 border border-white/20 text-white placeholder-white/60 rounded-md focus:ring-2 focus:ring-pink-400 focus:border-transparent;
+		@apply bg-white/10 border border-white/20 text-white placeholder-white/60 rounded-md focus:ring-2 focus:ring-sky-400 focus:border-transparent;
 	}
 	.table-glass {
 		@apply w-full text-left border border-white/10 rounded-lg overflow-hidden;

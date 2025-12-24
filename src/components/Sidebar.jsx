@@ -91,7 +91,7 @@ const Sidebar = ({ isOpen }) => {
   )
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-[#1a0f24]/80 backdrop-blur-md border-r border-white/10 text-white shadow-lg transition-all duration-300 z-40 ${
+    <div className={`fixed left-0 top-0 h-full bg-slate-950/70 backdrop-blur-md border-r border-white/10 text-white shadow-lg transition-all duration-300 z-40 ${
       isOpen ? 'w-64' : 'w-20'
     }`}>
       {/* Logo */}
@@ -159,7 +159,7 @@ const Sidebar = ({ isOpen }) => {
                   to={item.path}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
                     isActive
-                      ? 'bg-white/10 text-white border-l-2 border-fuchsia-400'
+                      ? 'bg-white/10 text-white border-l-2 border-sky-400'
                       : 'text-white/80 hover:bg-white/5 hover:text-white'
                   }`}
                 >

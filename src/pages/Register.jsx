@@ -52,16 +52,22 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
+    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white">
+      <div className="pointer-events-none absolute inset-0 opacity-30">
+        <div className="absolute -left-10 top-16 h-80 w-2 bg-white/10 rounded-full" />
+        <div className="absolute left-4 top-36 h-64 w-2 bg-white/10 rounded-full" />
+        <div className="absolute right-10 -top-10 h-60 w-60 rounded-full bg-gradient-to-tr from-sky-400/20 via-blue-400/10 to-transparent blur-2xl" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="relative z-10 w-full max-w-md rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-8 shadow-2xl">
         <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
-        {error && <div className="mb-4 text-red-500">{error}</div>}
+        {error && <div className="mb-4 rounded-md bg-red-600/30 border border-red-300 px-4 py-2 text-white">{error}</div>}
         <div className="mb-4">
           <label className="block mb-1">Nama</label>
           <input
             type="text"
             name="nama"
-            className="w-full border px-3 py-2 rounded"
+            className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-sky-400"
             value={form.nama}
             onChange={handleChange}
             placeholder="Contoh: John Doe"
@@ -73,7 +79,7 @@ export default function RegisterPage() {
           <input
             type="email"
             name="email"
-            className="w-full border px-3 py-2 rounded"
+            className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-sky-400"
             value={form.email}
             onChange={handleChange}
             placeholder="Contoh: john.doe@email.com"
@@ -85,7 +91,7 @@ export default function RegisterPage() {
           <input
             type="password"
             name="password"
-            className="w-full border px-3 py-2 rounded"
+            className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-sky-400"
             value={form.password}
             onChange={handleChange}
             placeholder="Minimal 6 karakter"
@@ -96,7 +102,7 @@ export default function RegisterPage() {
           <label className="block mb-1">Role</label>
           <select
             name="role"
-            className="w-full border px-3 py-2 rounded"
+            className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
             value={form.role}
             onChange={handleChange}
           >
@@ -108,14 +114,14 @@ export default function RegisterPage() {
         </div>
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          className="w-full rounded-full px-4 py-3 text-sm font-bold text-white shadow-xl bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 hover:opacity-95 transition"
           disabled={loading}
         >
           {loading ? "Loading..." : "Register"}
         </button>
         <div className="mt-4 text-center">
-          <span>Sudah punya akun? </span>
-          <Link to="/login" className="text-blue-600 hover:underline">Login</Link>
+          <span className="text-white/80">Sudah punya akun? </span>
+          <Link to="/login" className="text-sky-400 hover:underline">Login</Link>
         </div>
       </form>
     </div>

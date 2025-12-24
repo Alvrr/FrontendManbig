@@ -102,7 +102,7 @@ const Stok = () => {
               {showLowStock && (
                 <input
                   type="number"
-                  className="border border-gray-300 rounded px-2 py-1 w-24"
+                  className="input-glass px-2 py-1 w-24"
                   value={lowThreshold}
                   min={1}
                   onChange={(e) => setLowThreshold(Number(e.target.value) || 1)}
@@ -118,7 +118,7 @@ const Stok = () => {
                   <div className="flex items-center gap-2">
                     <span>{p.nama_produk || p.nama || p.id} • Stok: {stokNow}</span>
                     {isLow && (
-                      <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 border border-red-200">Low</span>
+                      <span className="badge badge-batal">Low</span>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -130,26 +130,26 @@ const Stok = () => {
           </div>
           <div>
             <h3 className="text-lg font-semibold mb-3">Info</h3>
-            <p className="text-sm text-gray-600">Gunakan tombol Adjust untuk melakukan mutasi stok (masuk/keluar/adjust).</p>
+            <p className="text-sm text-white/70">Gunakan tombol Adjust untuk melakukan mutasi stok (masuk/keluar/adjust).</p>
           </div>
         </div>
       </Card>
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold">Mutasi Stok</h3>
+          <div className="card-glass backdrop-blur-md shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-white">Mutasi Stok</h3>
             </div>
             <div className="p-6 space-y-3">
               <div className="space-y-2">
                 <input
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full input-glass px-3 py-2"
                   placeholder="Cari produk..."
                   value={produkQuery}
                   onChange={(e) => setProdukQuery(e.target.value)}
                 />
                 <select
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full input-glass px-3 py-2"
                   value={form.produk_id}
                   onChange={(e) => setForm({ ...form, produk_id: e.target.value })}
                 >
@@ -163,19 +163,19 @@ const Stok = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Jenis</label>
-                  <select className="w-full border rounded px-3 py-2" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value })}>
+                  <label className="block text-sm font-medium mb-1 text-white/80">Jenis</label>
+                  <select className="w-full input-glass px-3 py-2" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value })}>
                     <option value="masuk">masuk</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Jumlah</label>
-                  <input type="number" min={1} className="w-full border rounded px-3 py-2" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: e.target.value })} />
+                  <label className="block text-sm font-medium mb-1 text-white/80">Jumlah</label>
+                  <input type="number" min={1} className="w-full input-glass px-3 py-2" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: e.target.value })} />
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-2">
-              <button className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded" onClick={() => setShowPopup(false)}>Batal</button>
+            <div className="p-6 border-t border-white/10 flex justify-end gap-2">
+              <button className="btn-secondary-glass px-4 py-2" onClick={() => setShowPopup(false)}>Batal</button>
               <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded" onClick={handleSubmit}>Simpan</button>
             </div>
           </div>

@@ -4,8 +4,8 @@ const Card = ({
   padding = 'p-6',
   shadow = 'shadow-sm',
   rounded = 'rounded-lg',
-  bg = 'bg-white',
-  variant = 'solid'
+  bg = 'bg-slate-900/40',
+  variant = 'glass'
 }) => {
   if (variant === 'glass') {
     return (
@@ -15,7 +15,7 @@ const Card = ({
     )
   }
   return (
-    <div className={`${bg} ${shadow} ${rounded} ${padding} border border-gray-200 text-gray-800 ${className}`}>
+    <div className={`${bg} ${shadow} ${rounded} ${padding} border border-white/10 text-white ${className}`}>
       {children}
     </div>
   )

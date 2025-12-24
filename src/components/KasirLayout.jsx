@@ -11,12 +11,12 @@ const KasirLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-[#22002e] via-[#3a0b4a] to-[#22002e]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} />
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
+      <div className={`min-h-screen flex flex-col transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-20'}`}>
         {/* Header - Fixed/Sticky */}
         <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 

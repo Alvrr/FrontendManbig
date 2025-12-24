@@ -35,28 +35,28 @@ const GudangDashboard = () => {
     >
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
-          <h3 className="text-sm font-medium text-gray-500">Total Produk</h3>
+          <h3 className="text-sm font-medium text-white/70">Total Produk</h3>
           <div className="flex items-end justify-between mt-2">
             <p className="text-3xl font-bold">{produkCount}</p>
             <a href="/produk" className="text-sm text-blue-600 hover:underline">Kelola</a>
           </div>
         </Card>
         <Card>
-          <h3 className="text-sm font-medium text-gray-500">Item Stok</h3>
+          <h3 className="text-sm font-medium text-white/70">Item Stok</h3>
           <div className="flex items-end justify-between mt-2">
             <p className="text-3xl font-bold">{stokList.length}</p>
             <a href="/stok" className="text-sm text-blue-600 hover:underline">Kelola</a>
           </div>
         </Card>
         <Card>
-          <h3 className="text-sm font-medium text-gray-500">Total Kategori</h3>
+          <h3 className="text-sm font-medium text-white/70">Total Kategori</h3>
           <div className="flex items-end justify-between mt-2">
             <p className="text-3xl font-bold">{kategoriCount}</p>
             <a href="/kategori" className="text-sm text-blue-600 hover:underline">Kelola</a>
           </div>
         </Card>
         <Card>
-          <h3 className="text-sm font-medium text-gray-500">Stok Rendah (&lt; {lowThreshold})</h3>
+          <h3 className="text-sm font-medium text-white/70">Stok Rendah (&lt; {lowThreshold})</h3>
           <div className="flex items-end justify-between mt-2">
             <p className="text-3xl font-bold text-red-600">{lowCount}</p>
             <a href={`/stok?low=1&threshold=${lowThreshold}`} className="text-sm text-blue-600 hover:underline">Lihat detail</a>
@@ -75,7 +75,7 @@ const GudangDashboard = () => {
         </Card>
         <Card>
           <h3 className="text-lg font-semibold mb-2">Info</h3>
-          <p className="text-gray-700">Halaman ini untuk role gudang. Akses mencakup manajemen produk, stok, dan kategori sesuai aturan hak akses.</p>
+          <p className="text-white/70">Halaman ini untuk role gudang. Akses mencakup manajemen produk, stok, dan kategori sesuai aturan hak akses.</p>
         </Card>
       </div>
     </PageWrapper>

@@ -95,7 +95,7 @@ const Riwayat = () => {
       cancelButtonText: "Batal",
       customClass: {
         confirmButton: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
-        cancelButton: "bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500",
+        cancelButton: "btn-secondary-glass px-4 py-2",
       },
       buttonsStyling: false,
     })
@@ -110,7 +110,7 @@ const Riwayat = () => {
           title: "Laporan berhasil diunduh!",
           confirmButtonText: "OK",
           customClass: {
-            confirmButton: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700",
+            confirmButton: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
           },
           buttonsStyling: false,
         })
@@ -260,7 +260,7 @@ const Riwayat = () => {
         <button
           onClick={handleDownloadLaporan}
           disabled={loading || filteredData.length === 0}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+          className="bg-green-600 hover:bg-green-700 disabled:bg-white/10 disabled:text-white/40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <DocumentArrowDownIcon className="w-5 h-5" />
           <span>Unduh Laporan</span>
@@ -271,36 +271,36 @@ const Riwayat = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
           <div className="flex items-center">
-            <div className="p-3 rounded-lg bg-blue-100">
-              <ShoppingCartIcon className="w-6 h-6 text-blue-600" />
+            <div className="p-3 rounded-lg bg-white/10">
+              <ShoppingCartIcon className="w-6 h-6 text-white" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Transaksi Selesai</p>
-              <p className="text-2xl font-semibold text-gray-900">{totalTransaksi}</p>
+              <p className="text-sm font-medium text-white/70">Total Transaksi Selesai</p>
+              <p className="text-2xl font-semibold text-white">{totalTransaksi}</p>
             </div>
           </div>
         </Card>
 
         <Card>
           <div className="flex items-center">
-            <div className="p-3 rounded-lg bg-green-100">
-              <DocumentArrowDownIcon className="w-6 h-6 text-green-600" />
+            <div className="p-3 rounded-lg bg-white/10">
+              <DocumentArrowDownIcon className="w-6 h-6 text-white" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Pendapatan</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatRupiah(totalPendapatan)}</p>
+              <p className="text-sm font-medium text-white/70">Total Pendapatan</p>
+              <p className="text-2xl font-semibold text-white">{formatRupiah(totalPendapatan)}</p>
             </div>
           </div>
         </Card>
 
         <Card>
           <div className="flex items-center">
-            <div className="p-3 rounded-lg bg-purple-100">
-              <CalendarIcon className="w-6 h-6 text-purple-600" />
+            <div className="p-3 rounded-lg bg-white/10">
+              <CalendarIcon className="w-6 h-6 text-white" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Rata-rata per Transaksi</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatRupiah(Math.round(rataRataTransaksi))}</p>
+              <p className="text-sm font-medium text-white/70">Rata-rata per Transaksi</p>
+              <p className="text-2xl font-semibold text-white">{formatRupiah(Math.round(rataRataTransaksi))}</p>
             </div>
           </div>
         </Card>
@@ -310,21 +310,21 @@ const Riwayat = () => {
       <Card className="mb-6">
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <FunnelIcon className="w-5 h-5 text-gray-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Filter Riwayat</h3>
+            <FunnelIcon className="w-5 h-5 text-white/60" />
+            <h3 className="text-lg font-semibold text-white">Filter Riwayat</h3>
           </div>
 
           {/* Filter Type Selection */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Filter</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Jenis Filter</label>
               <select
                 value={filterType}
                 onChange={(e) => {
                   setFilterType(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full input-glass px-3 py-2"
               >
                 <option value="all">Semua Data</option>
                 <option value="custom">Rentang Tanggal</option>
@@ -337,7 +337,7 @@ const Riwayat = () => {
             {filterType === 'custom' && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Tanggal Mulai</label>
                   <input
                     type="date"
                     value={customDateStart}
@@ -345,11 +345,11 @@ const Riwayat = () => {
                       setCustomDateStart(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full input-glass px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Tanggal Selesai</label>
                   <input
                     type="date"
                     value={customDateEnd}
@@ -357,7 +357,7 @@ const Riwayat = () => {
                       setCustomDateEnd(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full input-glass px-3 py-2"
                   />
                 </div>
               </>
@@ -366,7 +366,7 @@ const Riwayat = () => {
             {/* Month Selection */}
             {filterType === 'month' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Bulan</label>
+                <label className="block text-sm font-medium text-white/70 mb-2">Pilih Bulan</label>
                 <input
                   type="month"
                   value={selectedMonth}
@@ -374,7 +374,7 @@ const Riwayat = () => {
                     setSelectedMonth(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full input-glass px-3 py-2"
                 />
               </div>
             )}
@@ -382,14 +382,14 @@ const Riwayat = () => {
             {/* Year Selection */}
             {filterType === 'year' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Tahun</label>
+                <label className="block text-sm font-medium text-white/70 mb-2">Pilih Tahun</label>
                 <select
                   value={selectedYear}
                   onChange={(e) => {
                     setSelectedYear(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full input-glass px-3 py-2"
                 >
                   {[2024, 2025, 2026, 2027, 2028].map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -400,9 +400,9 @@ const Riwayat = () => {
 
             {/* Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cari ID Transaksi</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Cari ID Transaksi</label>
               <div className="relative">
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <MagnifyingGlassIcon className="w-5 h-5 text-white/40 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Cari ID..."
@@ -411,18 +411,18 @@ const Riwayat = () => {
                     setSearchId(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-10 pr-4 py-2 w-full input-glass"
                 />
               </div>
             </div>
           </div>
 
           {/* Period Info */}
-          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-            <span className="text-sm text-gray-600">
+          <div className="flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-lg">
+            <span className="text-sm text-white/70">
               <strong>Periode:</strong> {getPeriodText()}
             </span>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-white/70">
               <strong>{filteredData.length}</strong> transaksi ditemukan
             </span>
           </div>
@@ -433,56 +433,56 @@ const Riwayat = () => {
       <Card>
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">Memuat data...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+            <p className="text-white/70">Memuat data...</p>
           </div>
         ) : riwayat.length === 0 ? (
           <div className="text-center py-12">
-            <ShoppingCartIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Riwayat Transaksi</h3>
-            <p className="text-gray-500">Riwayat transaksi akan muncul di sini setelah ada pembayaran yang berhasil diselesaikan.</p>
+            <ShoppingCartIcon className="w-12 h-12 text-white/50 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">Belum Ada Riwayat Transaksi</h3>
+            <p className="text-white/70">Riwayat transaksi akan muncul di sini setelah ada pembayaran yang berhasil diselesaikan.</p>
           </div>
         ) : filteredData.length === 0 ? (
           <div className="text-center py-12">
-            <ChartBarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak Ada Data</h3>
-            <p className="text-gray-500">Tidak ada transaksi yang sesuai dengan filter yang dipilih.</p>
+            <ChartBarIcon className="w-12 h-12 text-white/50 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">Tidak Ada Data</h3>
+            <p className="text-white/70">Tidak ada transaksi yang sesuai dengan filter yang dipilih.</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="table-glass">
+                <thead className="thead-glass">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pelanggan</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kasir</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Pengiriman</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ongkir</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Bayar</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Pelanggan</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Kasir</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Driver</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Jenis Pengiriman</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Produk</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Ongkir</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Total Bayar</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="tbody-glass">
                   {paginatedData.map((item) => {
                     const pelangganDetail = pelanggan.find(p => p.id === item.id_pelanggan);
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <tr key={item.id} className="row-glass">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">{item.id}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">
                           {pelangganDetail?.nama || item.nama_pelanggan || '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_kasir || '-'}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama_driver || '-'}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.nama_kasir || '-'}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.nama_driver || '-'}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            item.jenis_pengiriman === 'motor' ? 'bg-blue-100 text-blue-800' :
-                            item.jenis_pengiriman === 'mobil' ? 'bg-purple-100 text-purple-800' :
-                            item.jenis_pengiriman === 'ambil_sendiri' ? 'bg-gray-100 text-gray-800' :
-                            'bg-gray-100 text-gray-800'
+                            item.jenis_pengiriman === 'motor' ? 'bg-blue-500/20 text-blue-200 border border-blue-400/30' :
+                            item.jenis_pengiriman === 'mobil' ? 'bg-purple-500/20 text-purple-200 border border-purple-400/30' :
+                            item.jenis_pengiriman === 'ambil_sendiri' ? 'bg-white/10 text-white/80 border border-white/10' :
+                            'bg-white/10 text-white/80 border border-white/10'
                           }`}>
                             {item.jenis_pengiriman === 'motor' ? 'Motor' :
                              item.jenis_pengiriman === 'mobil' ? 'Mobil' :
@@ -490,31 +490,31 @@ const Riwayat = () => {
                              item.jenis_pengiriman || '-'}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
+                        <td className="px-4 py-4 text-sm text-white/90">
                           {item.produk && item.produk.length > 0 ? (
                             <ul className="space-y-1">
                               {item.produk.map((produk, index) => (
                                 <li key={index} className="text-xs">
                                   <div className="font-medium">{produk.nama_produk || produk.id_produk}</div>
-                                  <div className="text-gray-500">{produk.jumlah}x @ {formatRupiah(produk.harga || 0)}</div>
-                                  <div className="text-blue-600 font-semibold">= {formatRupiah(produk.subtotal || 0)}</div>
+                                  <div className="text-white/60">{produk.jumlah}x @ {formatRupiah(produk.harga || 0)}</div>
+                                  <div className="text-blue-300 font-semibold">= {formatRupiah(produk.subtotal || 0)}</div>
                                 </li>
                               ))}
                             </ul>
                           ) : '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{formatRupiah(item.ongkir || 0)}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{formatRupiah(item.ongkir || 0)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-white">
                           {formatRupiah(item.total_bayar || 0)}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">
                           <div className="space-y-1">
                             <div>{item.tanggal ? format(new Date(item.tanggal), "dd MMM yyyy", { locale: id }) : '-'}</div>
-                            <div className="text-xs text-gray-500">{item.tanggal ? format(new Date(item.tanggal), "HH:mm") : ''}</div>
+                            <div className="text-xs text-white/60">{item.tanggal ? format(new Date(item.tanggal), "HH:mm") : ''}</div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          <span className="badge badge-selesai">
                             {item.status || 'Selesai'}
                           </span>
                         </td>
@@ -527,10 +527,10 @@ const Riwayat = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t border-white/10">
                 <button
                   onClick={() => changePage(currentPage - 1)}
-                  className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 text-sm btn-secondary-glass disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={currentPage === 1}
                 >
                   Previous
@@ -542,7 +542,7 @@ const Riwayat = () => {
                     className={`px-3 py-2 text-sm rounded-lg ${
                       currentPage === i + 1
                         ? "bg-blue-600 text-white"
-                        : "bg-white border border-gray-300 hover:bg-gray-50"
+                        : "btn-secondary-glass"
                     }`}
                   >
                     {i + 1}
@@ -550,7 +550,7 @@ const Riwayat = () => {
                 ))}
                 <button
                   onClick={() => changePage(currentPage + 1)}
-                  className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 text-sm btn-secondary-glass disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={currentPage === totalPages}
                 >
                   Next
