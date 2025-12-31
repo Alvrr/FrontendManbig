@@ -18,6 +18,18 @@ export const getMutasiByProduk = async (produkId) => {
   return res.data;
 };
 
+export const listMutasi = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/stok/mutasi${query ? `?${query}` : ''}`);
+  return res.data;
+};
+
+export const exportMutasiExcel = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/stok/mutasi/export${query ? `?${query}` : ''}`, { responseType: 'blob' });
+  return res.data;
+};
+
 // Backwards-compat exports (not used anymore)
 export const getAllStok = async () => { throw new Error('Endpoint tidak tersedia. Gunakan getSaldoProduk per produk.'); };
 export const updateStok = async () => { throw new Error('Endpoint tidak tersedia. Gunakan createMutasi untuk penyesuaian.'); };

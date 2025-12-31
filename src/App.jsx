@@ -11,11 +11,11 @@ import Karyawan from './pages/DataKaryawan'
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
-import GudangDashboard from './pages/GudangDashboard';
 import PengirimanDriver from './pages/PengirimanDriver';
 import Transaksi from './pages/Transaksi';
 import Kategori from './pages/Kategori';
 import Stok from './pages/Stok';
+import RiwayatStok from './pages/RiwayatStok';
 
 function App() {
   return (
@@ -37,12 +37,6 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/riwayat" element={<Riwayat />} />
-          {/* Dashboard Gudang */}
-          <Route path="/gudang" element={
-            <ProtectedRoute requiredRoles={['gudang','admin']}>
-              <GudangDashboard />
-            </ProtectedRoute>
-          } />
           {/* Halaman Gudang: Kategori dan Stok */}
           <Route path="/kategori" element={
             <ProtectedRoute requiredRoles={['gudang','admin']}>
@@ -52,6 +46,11 @@ function App() {
           <Route path="/stok" element={
             <ProtectedRoute requiredRoles={['gudang','admin']}>
               <Stok />
+            </ProtectedRoute>
+          } />
+          <Route path="/riwayat-stok" element={
+            <ProtectedRoute requiredRoles={['gudang','admin']}>
+              <RiwayatStok />
             </ProtectedRoute>
           } />
           {/* Pengiriman untuk driver dan admin */}

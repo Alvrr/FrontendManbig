@@ -9,7 +9,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 
 const Stok = () => {
   const [list, setList] = useState([]); // list produk
-  const [form, setForm] = useState({ produk_id: "", jenis: "masuk", jumlah: 0 });
+  const [form, setForm] = useState({ produk_id: "", jenis: "masuk", jumlah: 0, keterangan: "" });
   const [showPopup, setShowPopup] = useState(false);
   const [produkList, setProdukList] = useState([]);
   const [produkQuery, setProdukQuery] = useState("");
@@ -63,11 +63,16 @@ const Stok = () => {
   }, []);
 
   const handleSubmit = async () => {
-    if (!form.produk_id || Number(form.jumlah) <= 0) return showError("Produk, jenis, dan jumlah wajib diisi");
+    if (!form.produk_id) return showError("Produk wajib dipilih");
+    if (form.jenis === "adjust") {
+      if (Number(form.jumlah) < 0) return showError("Saldo target tidak boleh negatif");
+    } else {
+      if (Number(form.jumlah) <= 0) return showError("Jumlah harus lebih dari 0");
+    }
     try {
-      await createMutasi({ produk_id: form.produk_id, jenis: form.jenis, jumlah: Number(form.jumlah) });
+      await createMutasi({ produk_id: form.produk_id, jenis: form.jenis, jumlah: Number(form.jumlah), keterangan: form.keterangan || undefined });
       showSuccess("Mutasi stok berhasil");
-      setForm({ produk_id: "", jenis: "masuk", jumlah: 0 });
+      setForm({ produk_id: "", jenis: "masuk", jumlah: 0, keterangan: "" });
       setShowPopup(false);
       fetchData();
     } catch (e) {
@@ -164,8 +169,10 @@ const Stok = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-white/80">Jenis</label>
-                  <select className="w-full input-glass px-3 py-2" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value })}>
+                  <select className="w-full input-glass px-3 py-2" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value, keterangan: "" })}>
                     <option value="masuk">masuk</option>
+                    <option value="keluar">keluar</option>
+                    <option value="adjust">adjust</option>
                   </select>
                 </div>
                 <div>
@@ -173,6 +180,20 @@ const Stok = () => {
                   <input type="number" min={1} className="w-full input-glass px-3 py-2" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: e.target.value })} />
                 </div>
               </div>
+              {form.jenis === "keluar" && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">Alasan Keluar</label>
+                    <select className="w-full input-glass px-3 py-2" value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })}>
+                      <option value="">-- Pilih Alasan --</option>
+                      <option value="rusak">rusak</option>
+                      <option value="basi">basi</option>
+                      <option value="hilang">hilang</option>
+                      <option value="lainnya">lainnya</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-white/10 flex justify-end gap-2">
               <button className="btn-secondary-glass px-4 py-2" onClick={() => setShowPopup(false)}>Batal</button>

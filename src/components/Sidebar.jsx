@@ -66,6 +66,12 @@ const Sidebar = ({ isOpen }) => {
       roles: ['gudang', 'admin']
     },
     {
+      name: 'Riwayat Stok',
+      path: '/riwayat-stok',
+      icon: DocumentTextIcon,
+      roles: ['gudang', 'admin']
+    },
+    {
       name: 'Transaksi',
       path: '/transaksi',
       icon: ClockIcon,
