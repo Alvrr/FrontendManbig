@@ -437,10 +437,8 @@ const ModernDashboard = () => {
     }
   ]
   // Sembunyikan kartu tertentu untuk role driver
-  const displayedStatsCards = user.role === 'driver'
+  const displayedStatsCards = (user.role === 'driver' || user.role === 'gudang')
     ? []
-    : user.role === 'gudang'
-    ? statsCards.filter(card => card.title === 'Total Produk')
     : statsCards
   // Khusus kasir: tampilkan KPI kasir
   const KasirSection = () => (

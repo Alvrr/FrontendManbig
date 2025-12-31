@@ -3,6 +3,8 @@ import { listPengiriman, updatePengiriman, getPengirimanById } from '../services
 import { showTimedSuccessAlert, showErrorAlert, showConfirmAlert } from '../utils/alertUtils';
 import { getTransaksiById } from '../services/transaksiAPI';
 import { formatRupiah } from '../utils/currency';
+import { getAllDrivers } from '../services/driverAPI';
+import { getAllKaryawan } from '../services/karyawanAPI';
 
 export default function PengirimanDriver() {
   const [items, setItems] = useState([]);
@@ -11,12 +13,55 @@ export default function PengirimanDriver() {
   const [statusFilter, setStatusFilter] = useState("semua");
   const [expandedId, setExpandedId] = useState(null);
   const [details, setDetails] = useState({});
+  const [driverNamaMap, setDriverNamaMap] = useState({});
+  const [kasirNamaMap, setKasirNamaMap] = useState({});
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await listPengiriman();
       setItems(data);
+      // Enrich: fetch driver list to map driver_id -> nama
+      try {
+        const driverData = await getAllDrivers();
+        const arr = Array.isArray(driverData) ? driverData : (driverData?.data || []);
+        const mapObj = {};
+        arr.forEach(d => {
+          const id = d?.id || d?._id || d?.ID || d?.username;
+          const nama = d?.nama || d?.name || d?.username || id;
+          if (id) mapObj[id] = nama;
+        });
+        setDriverNamaMap(mapObj);
+      } catch {
+        // ignore
+      }
+
+      // Enrich: map transaksi_id -> {namaKasir, kasirId}
+      try {
+        // Build karyawan map once
+        let karyawanMapObj = {};
+        try {
+          const karyawanData = await getAllKaryawan();
+          const arrKar = Array.isArray(karyawanData) ? karyawanData : (karyawanData?.data || []);
+          arrKar.forEach(u => { const id = u?.id || u?._id || u?.ID || u?.username; const nama = u?.nama || u?.name || u?.username || id; if (id) karyawanMapObj[id] = nama; });
+        } catch { /* ignore; fallback to IDs */ }
+
+        const tids = Array.from(new Set((Array.isArray(data) ? data : []).map(x => x.transaksi_id).filter(Boolean)));
+        const entries = await Promise.all(tids.map(async (tid) => {
+          try {
+            const tx = await getTransaksiById(tid);
+            const kasirId = tx?.kasir_id;
+            if (!kasirId) return [tid, { nama: '', id: '' }];
+            const nama = karyawanMapObj[kasirId] || kasirId;
+            return [tid, { nama, id: kasirId }];
+          } catch {
+            return [tid, { nama: '', id: '' }];
+          }
+        }))
+        setKasirNamaMap(Object.fromEntries(entries));
+      } catch {
+        // ignore
+      }
     } catch (e) {
       showErrorAlert('Gagal memuat pengiriman');
     } finally {
@@ -57,7 +102,13 @@ export default function PengirimanDriver() {
   };
 
   const filtered = items.filter((p) => {
-    const matchQuery = query.trim().length === 0 || (p.id || '').toLowerCase().includes(query.toLowerCase()) || (p.transaksi_id || '').toLowerCase().includes(query.toLowerCase());
+    const q = query.toLowerCase().trim();
+    const driverNama = driverNamaMap[p.driver_id] || '';
+    const matchQuery = q.length === 0 
+      || (p.id || '').toLowerCase().includes(q) 
+      || (p.transaksi_id || '').toLowerCase().includes(q)
+      || (p.driver_id || '').toLowerCase().includes(q)
+      || driverNama.toLowerCase().includes(q);
     const matchStatus = statusFilter === 'semua' || (p.status || '').toLowerCase() === statusFilter;
     return matchQuery && matchStatus;
   });
@@ -88,7 +139,7 @@ export default function PengirimanDriver() {
         </div>
       </div>
       <div className="flex gap-3 mb-4">
-        <input className="input-glass px-3 py-2 flex-1" placeholder="Cari ID atau Transaksi" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="input-glass px-3 py-2 flex-1" placeholder="Cari ID, Transaksi, atau Driver" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select className="input-glass px-3 py-2" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="semua">Semua Status</option>
           <option value="diproses">Diproses</option>
@@ -108,6 +159,8 @@ export default function PengirimanDriver() {
                 <div>
                   <div className="font-medium">{p.id}</div>
                   <div className="text-sm text-white/80">Transaksi: {p.transaksi_id}</div>
+                  <div className="text-sm text-white/80">Driver: {driverNamaMap[p.driver_id] ? `${driverNamaMap[p.driver_id]} (${p.driver_id})` : (p.driver_id || '-')}</div>
+                  <div className="text-sm text-white/80">Kasir: {kasirNamaMap[p.transaksi_id]?.nama ? `${kasirNamaMap[p.transaksi_id].nama} (${kasirNamaMap[p.transaksi_id].id})` : '-'}</div>
                   <div className="text-sm text-white/90">Jenis: {p.jenis || '-'}</div>
                   <div className="text-sm text-white/90">Ongkir: {formatRupiah(p.ongkir || 0)}</div>
                   <div className="mt-1">{badge(p.status)}</div>

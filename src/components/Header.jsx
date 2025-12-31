@@ -102,11 +102,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           
-          <div className="hidden md:block">
-            <h1 className="text-lg font-semibold text-white">
-              {getDashboardTitle()}
-            </h1>
-          </div>
+          {/* Title removed per request */}
         </div>
 
         {/* Right side - User Menu */}

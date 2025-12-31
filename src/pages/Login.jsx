@@ -48,7 +48,48 @@ export default function LoginPage({ onLogin }) {
               <span className="h-3 w-3 bg-white/80 rounded" />
               <span className="h-3 w-3 bg-white/80 rounded" />
             </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">Welcome!</h1>
+            {/* Logo + Heading row */}
+            <div className="flex items-center gap-4">
+              <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 shadow-lg ring-1 ring-inset ring-white/20 ring-offset-2 ring-offset-white/10 flex items-center justify-center overflow-hidden">
+                <span className="absolute inset-0 bg-white/10 mix-blend-overlay pointer-events-none"></span>
+                <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-white/50"></span>
+                <span className="absolute -inset-6 bg-cyan-300/20 blur-2xl rounded-full pointer-events-none" />
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-8 w-8 text-white/95 drop-shadow">
+                  <defs>
+                    <linearGradient id="logoStroke" x1="0" x2="1">
+                      <stop offset="0%" stopColor="white" stopOpacity="0.95" />
+                      <stop offset="100%" stopColor="white" stopOpacity="0.8" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M7 9h10l-1 9H8L7 9z"
+                    fill="none"
+                    stroke="url(#logoStroke)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9.5 9V7.8a2.5 2.5 0 0 1 5 0V9"
+                    fill="none"
+                    stroke="url(#logoStroke)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M14.8 13.5l-2.1 2.1-1.2-1.2"
+                    fill="none"
+                    stroke="url(#logoStroke)"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.9"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">WELCOME TO MANBIG</h1>
+            </div>
             <div className="h-[2px] w-12 bg-white/70 my-5" />
             <p className="max-w-xl text-white/80 leading-relaxed">
               Welcome to Manbig, your ultimate platform for managing and organizing your business with ease. Log in to access your personalized dashboard and take control of your operations.

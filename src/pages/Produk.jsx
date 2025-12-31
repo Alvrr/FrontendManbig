@@ -178,9 +178,13 @@ const Produk = () => {
     }
   }
 
-  const filteredData = produk.filter((item) =>
-    searchId === "" || item.id.toString().includes(searchId)
-  )
+  const filteredData = produk.filter((item) => {
+    const q = (searchId || "").toLowerCase().trim()
+    if (!q) return true
+    const idStr = String(item.id || "").toLowerCase()
+    const nameStr = String(item.nama_produk || "").toLowerCase()
+    return idStr.includes(q) || nameStr.includes(q)
+  })
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const paginatedData = filteredData.slice(
@@ -223,7 +227,7 @@ const Produk = () => {
             <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari berdasarkan ID produk..."
+              placeholder="Cari berdasarkan ID atau nama produk..."
               value={searchId}
               onChange={(e) => {
                 setSearchId(e.target.value)
