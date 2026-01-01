@@ -39,13 +39,18 @@ const Produk = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
+  const formatIDRInput = (v) => {
+    const digits = String(v ?? "").replace(/\D/g, "")
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  }
+
   const fetchData = async () => {
     const [dataProduk, dataKategori] = await Promise.all([
       getAllProduk(),
       getKategori(),
     ])
-    setProduk(dataProduk)
-    setKategori(dataKategori)
+    setProduk(Array.isArray(dataProduk) ? dataProduk : [])
+    setKategori(Array.isArray(dataKategori) ? dataKategori : [])
     // ambil saldo per produk untuk stok terkini
     const entries = await Promise.all(
       (Array.isArray(dataProduk) ? dataProduk : []).map(async (p) => {
@@ -78,8 +83,8 @@ const Produk = () => {
         id: item.id,
         nama_produk: item.nama_produk || "",
         kategori_id: item.kategori_id || "",
-        harga_jual: item.harga_jual !== undefined && item.harga_jual !== null ? String(item.harga_jual) : "",
-        harga_beli: item.harga_beli !== undefined && item.harga_beli !== null ? String(item.harga_beli) : "",
+        harga_jual: item.harga_jual !== undefined && item.harga_jual !== null ? formatIDRInput(String(item.harga_jual)) : "",
+        harga_beli: item.harga_beli !== undefined && item.harga_beli !== null ? formatIDRInput(String(item.harga_beli)) : "",
         deskripsi: item.deskripsi || "",
         tanggal: item.created_at ? new Date(item.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
       })
@@ -107,12 +112,15 @@ const Produk = () => {
     }
     e.preventDefault()
 
+    const hargaJualNum = Number(String(form.harga_jual).replace(/\D/g, ""))
+    const hargaBeliNum = form.harga_beli === "" ? 0 : Number(String(form.harga_beli).replace(/\D/g, ""))
+
     // Buat payload yang sesuai dengan struktur backend
     const payload = {
       nama_produk: form.nama_produk,
       kategori_id: form.kategori_id,
-      harga_jual: Number(form.harga_jual),
-      harga_beli: form.harga_beli === "" ? 0 : Number(form.harga_beli),
+      harga_jual: hargaJualNum,
+      harga_beli: hargaBeliNum,
       deskripsi: form.deskripsi,
     }
 
@@ -178,7 +186,7 @@ const Produk = () => {
     }
   }
 
-  const filteredData = produk.filter((item) => {
+  const filteredData = (Array.isArray(produk) ? produk : []).filter((item) => {
     const q = (searchId || "").toLowerCase().trim()
     if (!q) return true
     const idStr = String(item.id || "").toLowerCase()
@@ -260,7 +268,7 @@ const Produk = () => {
                 <tr key={item.id} className="row-glass">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white/90">{item.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{item.nama_produk}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{kategori.find(k => k._id === item.kategori_id)?.nama_kategori || item.kategori_id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{(Array.isArray(kategori) ? kategori : []).find(k => k._id === item.kategori_id)?.nama_kategori || item.kategori_id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{formatRupiah(item.harga_jual)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{saldoMap[item.id] ?? item.stok ?? 0}</td>
                   <td className="px-6 py-4 text-sm text-white/90 max-w-xs truncate">{item.deskripsi}</td>
@@ -390,11 +398,10 @@ const Produk = () => {
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-1">Harga Jual</label>
                 <input
-                  type="number"
+                  type="text"
                   value={form.harga_jual}
-                  onChange={(e) => setForm({ ...form, harga_jual: e.target.value })}
-                  placeholder="Masukkan harga jual dalam rupiah (contoh: 5000000)"
-                  min="0"
+                  onChange={(e) => setForm({ ...form, harga_jual: formatIDRInput(e.target.value) })}
+                  placeholder="Masukkan harga jual (contoh: 5.000.000)"
                   className="input-glass w-full px-3 py-2"
                   required
                 />
@@ -403,11 +410,10 @@ const Produk = () => {
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-1">Harga Beli</label>
                 <input
-                  type="number"
+                  type="text"
                   value={form.harga_beli}
-                  onChange={(e) => setForm({ ...form, harga_beli: e.target.value })}
-                  placeholder="Masukkan harga beli (boleh 0)"
-                  min="0"
+                  onChange={(e) => setForm({ ...form, harga_beli: formatIDRInput(e.target.value) })}
+                  placeholder="Masukkan harga beli (contoh: 5.000.000)"
                   className="input-glass w-full px-3 py-2"
                 />
               </div>
