@@ -3,12 +3,17 @@ import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import axiosInstance from "../services/axiosInstance";
 import { getSaldoProduk, exportMutasiExcel } from "../services/stokAPI";
+import { getAllProduk } from "../services/produkAPI";
 import { showConfirmAlert, showSuccessAlert, showErrorAlert } from "../utils/alertUtils";
 
 const RiwayatStok = () => {
   const [items, setItems] = useState([]);
   const [filters, setFilters] = useState({ produk_id: "", jenis: "", start: "", end: "" });
   const [loading, setLoading] = useState(false);
+  const [produkMap, setProdukMap] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil((items?.length || 0) / itemsPerPage) || 1;
 
   const fetchData = async () => {
     setLoading(true);
@@ -20,10 +25,27 @@ const RiwayatStok = () => {
       if (filters.end) params.append("end", toRFC3339End(filters.end));
       const res = await axiosInstance.get(`/stok/mutasi?${params.toString()}`);
       setItems(Array.isArray(res.data) ? res.data : []);
+      setCurrentPage(1);
     } catch (e) {
       setItems([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Ambil daftar produk untuk memetakan ID -> nama produk
+  const fetchProdukMap = async () => {
+    try {
+      const list = await getAllProduk();
+      const map = {};
+      (Array.isArray(list) ? list : []).forEach(p => {
+        const id = p.id || p._id || p.ID;
+        const nama = p.nama_produk || p.nama || id;
+        if (id) map[id] = nama;
+      });
+      setProdukMap(map);
+    } catch (e) {
+      setProdukMap({});
     }
   };
 
@@ -102,7 +124,7 @@ const RiwayatStok = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchProdukMap(); fetchData(); }, []);
 
   const toRFC3339Start = (d) => `${d}T00:00:00Z`;
   const toRFC3339End = (d) => `${d}T23:59:59Z`;
@@ -157,10 +179,10 @@ const RiwayatStok = () => {
                 </tr>
               </thead>
               <tbody className="tbody-glass">
-                {items.map((m, idx) => (
+                {(items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)).map((m, idx) => (
                   <tr key={idx} className="row-glass">
                     <td className="px-4 py-2 text-white/80">{m.created_at ? new Date(m.created_at).toLocaleString('id-ID') : '-'}</td>
-                    <td className="px-4 py-2 text-white/90">{m.produk_id}</td>
+                    <td className="px-4 py-2 text-white/90">{produkMap[m.produk_id] || m.produk_nama || m.produk_id}</td>
                     <td className="px-4 py-2 text-white/90">{m.jenis}</td>
                     <td className="px-4 py-2 text-white/90">{m.jumlah}</td>
                     <td className="px-4 py-2 text-white/90">{m.user_id ? m.user_id : '-'}</td>
@@ -173,6 +195,33 @@ const RiwayatStok = () => {
                 )}
               </tbody>
             </table>
+            {/* Pagination controls */}
+            <div className="flex items-center justify-center mt-4">
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn-secondary-glass px-3 py-1"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                >Previous</button>
+                {/* Numbered pages */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={
+                      (currentPage === page)
+                        ? "px-3 py-1 rounded bg-blue-600 text-white shadow"
+                        : "px-3 py-1 rounded btn-secondary-glass"
+                    }
+                  >{page}</button>
+                ))}
+                <button
+                  className="btn-secondary-glass px-3 py-1"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                >Next</button>
+              </div>
+            </div>
           </div>
         )}
       </Card>

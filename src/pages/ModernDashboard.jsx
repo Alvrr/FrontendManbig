@@ -279,39 +279,30 @@ const ModernDashboard = () => {
           })
         })
 
-        // Produk terlaris: coba ambil dari endpoint laporan (transaksi), fallback ke mutasi keluar 7 hari
-        let fromAPI = []
-        try {
-          fromAPI = await getBestSellers(7)
-        } catch { /* ignore */ }
-        if (Array.isArray(fromAPI) && fromAPI.length > 0) {
-          produkTerlarisGudang = fromAPI.map((x) => ({ nama: x.nama || x.produk_id, jumlah: x.jumlah || 0 }))
-        } else {
-          // Fallback: mutasi keluar 7 hari terakhir
-          const produkNameMap = {}
-          produkList.forEach(p => { const id = p.id || p._id || p.ID; produkNameMap[id] = p.nama_produk || id })
-          const countKeluar = {}
-          produkList.forEach((p) => {
-            const id = p.id || p._id || p.ID
-            const list = mutasiMap[id] || []
-            const totalKeluar7Hari = list.reduce((acc, m) => {
-              if (String(m?.jenis).toLowerCase() !== 'keluar') return acc
-              const d = m?.created_at ? new Date(m.created_at) : null
-              if (!d) return acc
-              if (d >= sevenDaysAgo && d <= todayDate) {
-                return acc + Number(m.jumlah || 0)
-              }
-              return acc
-            }, 0)
-            if (totalKeluar7Hari > 0) {
-              countKeluar[id] = (countKeluar[id] || 0) + totalKeluar7Hari
+        // Produk terlaris untuk gudang: berdasar mutasi keluar 7 hari terakhir (selaras dengan stok)
+        const produkNameMap = {}
+        produkList.forEach(p => { const id = p.id || p._id || p.ID; produkNameMap[id] = p.nama_produk || id })
+        const countKeluar = {}
+        produkList.forEach((p) => {
+          const id = p.id || p._id || p.ID
+          const list = mutasiMap[id] || []
+          const totalKeluar7Hari = list.reduce((acc, m) => {
+            if (String(m?.jenis).toLowerCase() !== 'keluar') return acc
+            const d = m?.created_at ? new Date(m.created_at) : null
+            if (!d) return acc
+            if (d >= sevenDaysAgo && d <= todayDate) {
+              return acc + Number(m.jumlah || 0)
             }
-          })
-          produkTerlarisGudang = Object.entries(countKeluar)
-            .map(([pid, jumlah]) => ({ nama: produkNameMap[pid] || pid, jumlah }))
-            .sort((a, b) => b.jumlah - a.jumlah)
-            .slice(0, 5)
-        }
+            return acc
+          }, 0)
+          if (totalKeluar7Hari > 0) {
+            countKeluar[id] = (countKeluar[id] || 0) + totalKeluar7Hari
+          }
+        })
+        produkTerlarisGudang = Object.entries(countKeluar)
+          .map(([pid, jumlah]) => ({ nama: produkNameMap[pid] || pid, jumlah }))
+          .sort((a, b) => b.jumlah - a.jumlah)
+          .slice(0, 5)
       }
 
       setStats({

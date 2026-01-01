@@ -13,6 +13,9 @@ const defaultConfig = {
   }
 };
 
+// Ekspor konfigurasi tema untuk digunakan di pemanggilan Swal.fire langsung bila diperlukan
+export const swalThemeConfig = defaultConfig;
+
 // Alert sukses
 export const showSuccessAlert = (title, text = '') => {
   return Swal.fire({

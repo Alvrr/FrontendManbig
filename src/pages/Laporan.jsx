@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns"
 import { id } from "date-fns/locale"
 import Swal from 'sweetalert2'
+import { showWarningAlert, showErrorAlert, showSuccessAlert, showConfirmAlert, swalThemeConfig } from "../utils/alertUtils"
 import axiosInstance from "../services/axiosInstance"
 import { decodeJWT } from "../utils/jwtDecode"
 import { getAllPembayaran } from "../services/pembayaranAPI"
@@ -48,16 +49,7 @@ function Laporan() {
     const decoded = decodeJWT(token);
     
     if (decoded?.role !== 'admin') {
-      Swal.fire({
-        icon: "warning",
-        title: "Akses Ditolak",
-        text: "Halaman laporan hanya dapat diakses oleh admin.",
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      }).then(() => {
+      showWarningAlert("Akses Ditolak", "Halaman laporan hanya dapat diakses oleh admin.").then(() => {
         window.history.back();
       });
       return;
@@ -128,12 +120,7 @@ function Laporan() {
       setPelanggan(Array.isArray(pelangganData) ? pelangganData : [])
     } catch (error) {
       console.error("Error fetching data:", error)
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Gagal memuat data laporan",
-        confirmButtonText: "OK"
-      })
+      showErrorAlert("Error", "Gagal memuat data laporan")
     } finally {
       setLoading(false)
     }
@@ -204,16 +191,7 @@ function Laporan() {
 
   const handleExportExcel = async () => {
     if (filteredData.length === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Tidak Ada Data",
-        text: "Tidak ada data transaksi untuk diekspor",
-        confirmButtonText: "OK",
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
-        },
-      })
+      showWarningAlert("Tidak Ada Data", "Tidak ada data transaksi untuk diekspor")
       return
     }
 
@@ -231,11 +209,10 @@ function Laporan() {
       showCancelButton: true,
       confirmButtonText: "Ya, Ekspor",
       cancelButtonText: "Batal",
-      customClass: {
-        confirmButton: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700",
-        cancelButton: "btn-secondary-glass px-4 py-2",
-      },
-      buttonsStyling: false,
+      buttonsStyling: swalThemeConfig.buttonsStyling,
+      customClass: swalThemeConfig.customClass,
+      background: swalThemeConfig.background,
+      color: swalThemeConfig.color,
     })
 
     if (result.isConfirmed) {
@@ -278,28 +255,10 @@ function Laporan() {
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
         
-        Swal.fire({
-          icon: "success",
-          title: "Ekspor Berhasil!",
-          text: "File Excel (.xlsx) berhasil diunduh",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700",
-          },
-          buttonsStyling: false,
-        })
+        showSuccessAlert("Ekspor Berhasil!", "File Excel (.xlsx) berhasil diunduh")
       } catch (error) {
         console.error('Error exporting:', error)
-        Swal.fire({
-          icon: "error",
-          title: "Gagal Ekspor",
-          text: "Terjadi kesalahan saat mengekspor data Excel",
-          confirmButtonText: "OK",
-          buttonsStyling: false,
-          customClass: {
-            confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-          },
-        })
+        showErrorAlert("Gagal Ekspor", "Terjadi kesalahan saat mengekspor data Excel")
       }
     }
   }
