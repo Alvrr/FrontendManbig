@@ -127,16 +127,13 @@ const Stok = () => {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => openAdjust(p.id)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded">Adjust</button>
+                    <button onClick={() => openAdjust(p.id)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded">Edit</button>
                   </div>
                 </li>
               )})}
             </ul>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Info</h3>
-            <p className="text-sm text-white/70">Gunakan tombol Adjust untuk melakukan mutasi stok (masuk/keluar/adjust).</p>
-          </div>
+          {/* Info panel dihapus untuk merapikan UI */}
         </div>
       </Card>
       {showPopup && (
@@ -172,7 +169,6 @@ const Stok = () => {
                   <select className="w-full input-glass px-3 py-2" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value, keterangan: "" })}>
                     <option value="masuk">masuk</option>
                     <option value="keluar">keluar</option>
-                    <option value="adjust">adjust</option>
                   </select>
                 </div>
                 <div>
@@ -194,6 +190,15 @@ const Stok = () => {
                   </div>
                 </div>
               )}
+              {form.jenis === "masuk" && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">Catatan Masuk (opsional)</label>
+                    <input className="w-full input-glass px-3 py-2" placeholder="Contoh: restock supplier ABC" value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {/* Referensi manual dihapus; backend akan mengisi otomatis untuk mutasi manual */}
             </div>
             <div className="p-6 border-t border-white/10 flex justify-end gap-2">
               <button className="btn-secondary-glass px-4 py-2" onClick={() => setShowPopup(false)}>Batal</button>

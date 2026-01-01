@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import axiosInstance from "../services/axiosInstance";
-import { getSaldoProduk } from "../services/stokAPI";
+import { getSaldoProduk, exportMutasiExcel } from "../services/stokAPI";
+import { showConfirmAlert, showSuccessAlert, showErrorAlert } from "../utils/alertUtils";
 
 const RiwayatStok = () => {
   const [items, setItems] = useState([]);
@@ -27,21 +28,78 @@ const RiwayatStok = () => {
   };
 
   const exportExcel = async () => {
+    // Ringkasan data seperti di laporan
+    const count = Array.isArray(items) ? items.length : 0;
+    const periodText = (!filters.start && !filters.end) ? "Semua Data" : `${filters.start || '-'} s/d ${filters.end || '-'}`;
+    if (count === 0) {
+      await showErrorAlert("Tidak ada data", `Tidak ada riwayat stok untuk filter: ${periodText}`);
+      return;
+    }
+    const confirm = await showConfirmAlert(
+      "Ekspor Riwayat Stok ke Excel",
+      `Data yang akan diekspor:\n\n${count} mutasi\nPeriode: ${periodText}`,
+      "Ya, Export",
+      "Batal"
+    );
+    if (!confirm?.isConfirmed) return;
     try {
-      const params = new URLSearchParams();
-      if (filters.produk_id) params.append("produk_id", filters.produk_id);
-      if (filters.jenis) params.append("jenis", filters.jenis);
-      if (filters.start) params.append("start", toRFC3339Start(filters.start));
-      if (filters.end) params.append("end", toRFC3339End(filters.end));
-      const res = await axiosInstance.get(`/stok/mutasi/export?${params.toString()}`, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const params = {
+        ...(filters.produk_id ? { produk_id: filters.produk_id } : {}),
+        ...(filters.jenis ? { jenis: filters.jenis } : {}),
+        ...(filters.start ? { start: toRFC3339Start(filters.start) } : {}),
+        ...(filters.end ? { end: toRFC3339End(filters.end) } : {}),
+      };
+      const res = await exportMutasiExcel(params);
+      if (!res || res.status === 0) {
+        await showErrorAlert("Gagal mengekspor", "Tidak dapat terhubung ke server");
+        return;
+      }
+      if (res.status === 401) {
+        await showErrorAlert("Tidak terautentikasi", "Silakan login kembali untuk mengekspor");
+        return;
+      }
+      if (res.status === 403) {
+        await showErrorAlert("Akses ditolak", "Export hanya untuk role Admin/Gudang");
+        return;
+      }
+      if (res.status !== 200) {
+        // Try decode text to show error message if server returned JSON/text
+        let errText = "Server mengembalikan status tidak berhasil";
+        try {
+          const decoder = new TextDecoder("utf-8");
+          errText = decoder.decode(res.data);
+        } catch {}
+        await showErrorAlert("Gagal mengekspor", errText || "Terjadi kesalahan pada server");
+        return;
+      }
+      const ct = res.headers?.["content-type"] || res.headers?.get?.("content-type") || "";
+      if (!ct.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+        // Try to decode server message
+        let msg = "Server tidak mengirim file Excel";
+        try {
+          const decoder = new TextDecoder("utf-8");
+          msg = decoder.decode(res.data) || msg;
+        } catch {}
+        await showErrorAlert("Gagal mengekspor", msg);
+        return;
+      }
+      const data = res.data;
+      if (!data || (data.byteLength ?? 0) < 100) {
+        await showErrorAlert("Gagal mengekspor", "Server mengembalikan data kosong atau tidak valid");
+        return;
+      }
+      const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "riwayat_stok.xlsx");
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-    } catch (e) {}
+      await showSuccessAlert("Berhasil mengekspor Excel");
+    } catch (e) {
+      await showErrorAlert("Gagal mengekspor", "Terjadi kesalahan jaringan atau tak terduga");
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -69,7 +127,6 @@ const RiwayatStok = () => {
               <option value="">(semua)</option>
               <option value="masuk">masuk</option>
               <option value="keluar">keluar</option>
-              <option value="adjust">adjust</option>
             </select>
           </div>
           <div>
@@ -107,7 +164,7 @@ const RiwayatStok = () => {
                     <td className="px-4 py-2 text-white/90">{m.jenis}</td>
                     <td className="px-4 py-2 text-white/90">{m.jumlah}</td>
                     <td className="px-4 py-2 text-white/90">{m.user_id ? m.user_id : '-'}</td>
-                    <td className="px-4 py-2 text-white/90">{(!m.ref_id || m.ref_type === 'manual') ? '-' : (m.ref_type ? `${m.ref_type}:${m.ref_id}` : m.ref_id)}</td>
+                    <td className="px-4 py-2 text-white/90">{(m.ref_type && m.ref_id) ? `${m.ref_type}:${m.ref_id}` : (m.ref_type || m.ref_id || '-')}</td>
                     <td className="px-4 py-2 text-white/90">{m.keterangan || '-'}</td>
                   </tr>
                 ))}

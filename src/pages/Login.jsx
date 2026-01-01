@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { loginService } from "../services/authAPI";
 import { useNavigate, Link } from "react-router-dom";
 import { showSuccessAlert, showErrorAlert } from "../utils/alertUtils";
-import { Player } from "@lottiefiles/react-lottie-player";
+// Removed external Lottie dependency to avoid 403 errors
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -98,13 +98,9 @@ export default function LoginPage({ onLogin }) {
 
           {/* Right: Sign-in Card */}
           <section className="relative rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md p-8 md:p-10 shadow-2xl">
-            {/* Decorative Lottie accent */}
-            <Player
-              src="https://assets9.lottiefiles.com/packages/lf20_m1lv6j0v.json"
-              autoplay
-              loop
-              className="pointer-events-none absolute -top-6 -right-6 opacity-40"
-              style={{ width: 220, height: 220 }}
+            {/* Decorative animated accent (local, no external fetch) */}
+            <div
+              className="pointer-events-none absolute -top-6 -right-6 opacity-40 w-[220px] h-[220px] rounded-full bg-gradient-to-tr from-sky-400/50 via-blue-400/30 to-indigo-400/20 blur-2xl animate-pulse"
             />
 
             <h2 className="text-2xl md:text-3xl font-bold mb-6">

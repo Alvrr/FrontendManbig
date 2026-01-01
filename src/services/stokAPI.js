@@ -26,8 +26,12 @@ export const listMutasi = async (params = {}) => {
 
 export const exportMutasiExcel = async (params = {}) => {
   const query = new URLSearchParams(params).toString();
-  const res = await axiosInstance.get(`/stok/mutasi/export${query ? `?${query}` : ''}`, { responseType: 'blob' });
-  return res.data;
+  // Always resolve to inspect status codes (e.g., 401/403)
+  const res = await axiosInstance.get(
+    `/stok/mutasi/export${query ? `?${query}` : ''}`,
+    { responseType: 'arraybuffer', validateStatus: () => true }
+  );
+  return res;
 };
 
 // Backwards-compat exports (not used anymore)
