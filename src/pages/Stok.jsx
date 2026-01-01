@@ -16,6 +16,8 @@ const Stok = () => {
   const [showLowStock, setShowLowStock] = useState(false);
   const [lowThreshold, setLowThreshold] = useState(10);
   const [saldoMap, setSaldoMap] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   const filteredProduk = produkList.filter(p => {
     const name = (p.nama_produk || p.nama || "").toLowerCase();
     return name.includes(produkQuery.toLowerCase());
@@ -61,6 +63,8 @@ const Stok = () => {
     if (low === '1') setShowLowStock(true);
     if (threshold) setLowThreshold(Number(threshold) || 10);
   }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [showLowStock, lowThreshold]);
 
   const handleSubmit = async () => {
     if (!form.produk_id) return showError("Produk wajib dipilih");
@@ -114,24 +118,78 @@ const Stok = () => {
                 />
               )}
             </div>
-            <ul className="divide-y">
-              {(showLowStock ? list.filter(p => Number(saldoMap[p.id] ?? p.stok ?? 0) < lowThreshold) : list).map((p) => {
-                const stokNow = Number(saldoMap[p.id] ?? p.stok ?? 0);
-                const isLow = stokNow < lowThreshold;
-                return (
-                <li key={p.id} className="py-3 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span>{p.nama_produk || p.nama || p.id} • Stok: {stokNow}</span>
-                    {isLow && (
-                      <span className="badge badge-batal">Low</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => openAdjust(p.id)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded">Edit</button>
-                  </div>
-                </li>
-              )})}
-            </ul>
+            {/* Tabel stok dengan font lebih besar dan pagination */}
+            {(() => {
+              const filtered = (showLowStock ? list.filter(p => Number(saldoMap[p.id] ?? p.stok ?? 0) < lowThreshold) : list);
+              const totalPages = Math.ceil((filtered?.length || 0) / itemsPerPage) || 1;
+              const visible = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+              return (
+                <div className="overflow-x-auto">
+                  <table className="table-glass text-base">
+                    <thead className="thead-glass">
+                      <tr>
+                        <th className="px-4 py-3">Produk</th>
+                        <th className="px-4 py-3">Stok</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="tbody-glass">
+                      {visible.map((p) => {
+                        const stokNow = Number(saldoMap[p.id] ?? p.stok ?? 0);
+                        const statusEl = stokNow === 0
+                          ? (<span className="badge badge-batal">Empty</span>)
+                          : (stokNow < lowThreshold
+                              ? (<span className="badge badge-batal">Low</span>)
+                              : (<span className="badge badge-selesai">OK</span>)
+                            );
+                        return (
+                          <tr key={p.id} className="row-glass">
+                            <td className="px-4 py-3 text-white/90">{p.nama_produk || p.nama || p.id}</td>
+                            <td className="px-4 py-3 text-white/90">{stokNow}</td>
+                            <td className="px-4 py-3 text-white/90">{statusEl}</td>
+                            <td className="px-4 py-3">
+                              <button onClick={() => openAdjust(p.id)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded">Edit</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {visible.length === 0 && (
+                        <tr><td className="px-4 py-6 text-center text-white/70" colSpan={4}>Tidak ada data</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                  {/* Pagination */}
+                  {filtered.length > itemsPerPage && (
+                    <div className="flex items-center justify-center mt-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="btn-secondary-glass px-3 py-1"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        >Previous</button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={
+                              (currentPage === page)
+                                ? "px-3 py-1 rounded bg-blue-600 text-white shadow"
+                                : "px-3 py-1 rounded btn-secondary-glass"
+                            }
+                          >{page}</button>
+                        ))}
+                        <button
+                          className="btn-secondary-glass px-3 py-1"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        >Next</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           {/* Info panel dihapus untuk merapikan UI */}
         </div>

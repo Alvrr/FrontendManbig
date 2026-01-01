@@ -28,7 +28,7 @@ const DataKaryawan = () => {
     status: 'aktif'
   });
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   useEffect(() => {
     // Check user authentication and role
@@ -64,6 +64,11 @@ const DataKaryawan = () => {
 
     fetchKaryawan();
   }, []);
+
+  // Reset ke halaman pertama saat pencarian/filters berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, statusFilter]);
 
   const fetchKaryawan = async () => {
     try {
@@ -420,64 +425,39 @@ const DataKaryawan = () => {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination (centered, numbered) */}
           {totalPages > 1 && (
             <div className="bg-white/5 px-4 py-3 border-t border-white/10 sm:px-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 flex justify-between sm:hidden">
+              <div className="flex items-center justify-center">
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm" aria-label="Pagination">
                   <button
                     onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
-                    className="btn-secondary-glass px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary-glass px-3 py-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
+                  {[...Array(totalPages)].map((_, index) => (
+                    <button
+                      key={`page-${index + 1}`}
+                      onClick={() => setCurrentPage(index + 1)}
+                      className={
+                        currentPage === index + 1
+                          ? 'mx-2 px-3 py-1 rounded bg-blue-600 text-white shadow text-sm'
+                          : 'mx-2 px-3 py-1 rounded btn-secondary-glass text-sm'
+                      }
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
                   <button
                     onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="ml-3 btn-secondary-glass px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary-glass px-3 py-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-white/70">
-                      Menampilkan <span className="font-medium text-white">{indexOfFirstItem + 1}</span> sampai <span className="font-medium text-white">{Math.min(indexOfLastItem, filteredKaryawan.length)}</span> dari <span className="font-medium text-white">{filteredKaryawan.length}</span> hasil
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                      <button
-                        onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="btn-secondary-glass px-2 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
-                      {[...Array(totalPages)].map((_, index) => (
-                        <button
-                          key={`page-${index + 1}`}
-                          onClick={() => setCurrentPage(index + 1)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === index + 1
-                              ? 'z-10 bg-sky-600 border-sky-600 text-white'
-                              : 'btn-secondary-glass'
-                          }`}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="btn-secondary-glass px-2 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </nav>
-                  </div>
-                </div>
+                </nav>
               </div>
             </div>
           )}

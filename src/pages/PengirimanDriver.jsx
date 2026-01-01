@@ -15,12 +15,15 @@ export default function PengirimanDriver() {
   const [details, setDetails] = useState({});
   const [driverNamaMap, setDriverNamaMap] = useState({});
   const [kasirNamaMap, setKasirNamaMap] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await listPengiriman();
       setItems(data);
+      setCurrentPage(1);
       // Enrich: fetch driver list to map driver_id -> nama
       try {
         const driverData = await getAllDrivers();
@@ -70,6 +73,7 @@ export default function PengirimanDriver() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { setCurrentPage(1); }, [query, statusFilter]);
 
   const handleUpdateStatus = async (id, next) => {
     const res = await showConfirmAlert(`Ubah status jadi ${next}?`);
@@ -112,6 +116,8 @@ export default function PengirimanDriver() {
     const matchStatus = statusFilter === 'semua' || (p.status || '').toLowerCase() === statusFilter;
     return matchQuery && matchStatus;
   });
+  const totalPages = Math.ceil((filtered?.length || 0) / itemsPerPage) || 1;
+  const paged = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
 
   const toggleDetail = async (p) => {
@@ -153,7 +159,7 @@ export default function PengirimanDriver() {
       ) : (
         <div className="space-y-3">
           {filtered.length === 0 && <p className="text-white/80">Tidak ada pengiriman.</p>}
-          {filtered.map((p) => (
+          {paged.map((p) => (
             <div key={p.id} className="border border-white/20 bg-white/5 rounded p-3 text-white">
               <div className="flex items-center justify-between">
                 <div>
@@ -192,6 +198,34 @@ export default function PengirimanDriver() {
               )}
             </div>
           ))}
+          {/* Pagination */}
+          {filtered.length > itemsPerPage && (
+            <div className="flex items-center justify-center mt-4">
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn-secondary-glass px-3 py-1"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                >Previous</button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={
+                      (currentPage === page)
+                        ? "px-3 py-1 rounded bg-blue-600 text-white shadow"
+                        : "px-3 py-1 rounded btn-secondary-glass"
+                    }
+                  >{page}</button>
+                ))}
+                <button
+                  className="btn-secondary-glass px-3 py-1"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                >Next</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
