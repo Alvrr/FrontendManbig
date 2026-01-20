@@ -19,6 +19,10 @@ export async function createPembayaran(data) {
   return axiosInstance.post("/pembayaran", data);
 }
 
+export async function selesaikanPembayaran(id) {
+  return axiosInstance.put(`/pembayaran/selesaikan/${id}`);
+}
+
 export async function updatePembayaran(id, data) {
   return axiosInstance.put(`/pembayaran/${id}`, data);
 }

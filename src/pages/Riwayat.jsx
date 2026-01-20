@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns"
 import { id } from "date-fns/locale"
 import Swal from 'sweetalert2'
-import { decodeJWT } from "../utils/jwtDecode"
+import { useAuth } from "../hooks/useAuth"
 import { getAllPelanggan } from "../services/pelangganAPI"
 import axiosInstance from "../services/axiosInstance"
 import PageWrapper from "../components/PageWrapper"
@@ -19,7 +19,7 @@ import {
 const Riwayat = () => {
   const [riwayat, setRiwayat] = useState([])
   const [pelanggan, setPelanggan] = useState([])
-  const [user, setUser] = useState({ role: '', id: '' })
+  const { user: authUser, authKey } = useAuth()
   const [loading, setLoading] = useState(false)
   
   // Filter states
@@ -35,14 +35,21 @@ const Riwayat = () => {
   const itemsPerPage = 5
 
   useEffect(() => {
-    // Ambil role dan id user dari JWT
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    setUser({ role: decoded?.role || '', id: decoded?.id || '' });
-    
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setRiwayat([])
+    setPelanggan([])
+    setFilterType('all')
+    setCustomDateStart('')
+    setCustomDateEnd('')
+    setSelectedMonth(format(new Date(), 'yyyy-MM'))
+    setSelectedYear(format(new Date(), 'yyyy'))
+    setSearchId("")
+    setCurrentPage(1)
+
     getRiwayat()
     fetchPelanggan()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authKey])
 
   const getRiwayat = async () => {
     setLoading(true)
@@ -164,10 +171,10 @@ const Riwayat = () => {
   }
 
   // Filter data berdasarkan role user - sama seperti implementasi driver
-  const filteredByRole = user.role === 'driver'
-    ? riwayat.filter(item => item && item.id_driver === user.id)
-    : user.role === 'kasir'
-    ? riwayat.filter(item => item && item.id_kasir === user.id)
+  const filteredByRole = authUser?.role === 'driver'
+    ? riwayat.filter(item => item && item.id_driver === authUser?.id)
+    : authUser?.role === 'kasir'
+    ? riwayat.filter(item => item && item.id_kasir === authUser?.id)
     : riwayat
 
   // Filter data berdasarkan tanggal

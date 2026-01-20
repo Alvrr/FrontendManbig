@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import axiosInstance from "../services/axiosInstance";
-import { getSaldoProduk, exportMutasiExcel } from "../services/stokAPI";
+import { getSaldoProduk } from "../services/stokAPI";
 import { getAllProduk } from "../services/produkAPI";
-import { showConfirmAlert, showSuccessAlert, showErrorAlert } from "../utils/alertUtils";
+// Fitur ekspor Excel dihapus sesuai permintaan
 
 const RiwayatStok = () => {
   const [items, setItems] = useState([]);
@@ -49,80 +49,7 @@ const RiwayatStok = () => {
     }
   };
 
-  const exportExcel = async () => {
-    // Ringkasan data seperti di laporan
-    const count = Array.isArray(items) ? items.length : 0;
-    const periodText = (!filters.start && !filters.end) ? "Semua Data" : `${filters.start || '-'} s/d ${filters.end || '-'}`;
-    if (count === 0) {
-      await showErrorAlert("Tidak ada data", `Tidak ada riwayat stok untuk filter: ${periodText}`);
-      return;
-    }
-    const confirm = await showConfirmAlert(
-      "Ekspor Riwayat Stok ke Excel",
-      `Data yang akan diekspor:\n\n${count} mutasi\nPeriode: ${periodText}`,
-      "Ya, Export",
-      "Batal"
-    );
-    if (!confirm?.isConfirmed) return;
-    try {
-      const params = {
-        ...(filters.produk_id ? { produk_id: filters.produk_id } : {}),
-        ...(filters.jenis ? { jenis: filters.jenis } : {}),
-        ...(filters.start ? { start: toRFC3339Start(filters.start) } : {}),
-        ...(filters.end ? { end: toRFC3339End(filters.end) } : {}),
-      };
-      const res = await exportMutasiExcel(params);
-      if (!res || res.status === 0) {
-        await showErrorAlert("Gagal mengekspor", "Tidak dapat terhubung ke server");
-        return;
-      }
-      if (res.status === 401) {
-        await showErrorAlert("Tidak terautentikasi", "Silakan login kembali untuk mengekspor");
-        return;
-      }
-      if (res.status === 403) {
-        await showErrorAlert("Akses ditolak", "Export hanya untuk role Admin/Gudang");
-        return;
-      }
-      if (res.status !== 200) {
-        // Try decode text to show error message if server returned JSON/text
-        let errText = "Server mengembalikan status tidak berhasil";
-        try {
-          const decoder = new TextDecoder("utf-8");
-          errText = decoder.decode(res.data);
-        } catch {}
-        await showErrorAlert("Gagal mengekspor", errText || "Terjadi kesalahan pada server");
-        return;
-      }
-      const ct = res.headers?.["content-type"] || res.headers?.get?.("content-type") || "";
-      if (!ct.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
-        // Try to decode server message
-        let msg = "Server tidak mengirim file Excel";
-        try {
-          const decoder = new TextDecoder("utf-8");
-          msg = decoder.decode(res.data) || msg;
-        } catch {}
-        await showErrorAlert("Gagal mengekspor", msg);
-        return;
-      }
-      const data = res.data;
-      if (!data || (data.byteLength ?? 0) < 100) {
-        await showErrorAlert("Gagal mengekspor", "Server mengembalikan data kosong atau tidak valid");
-        return;
-      }
-      const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "riwayat_stok.xlsx");
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      await showSuccessAlert("Berhasil mengekspor Excel");
-    } catch (e) {
-      await showErrorAlert("Gagal mengekspor", "Terjadi kesalahan jaringan atau tak terduga");
-    }
-  };
+  // exportExcel dihapus
 
   useEffect(() => { fetchProdukMap(); fetchData(); }, []);
 
@@ -132,10 +59,7 @@ const RiwayatStok = () => {
   return (
     <PageWrapper
       title="Riwayat Stok"
-      description="Lihat dan ekspor riwayat mutasi stok"
-      action={
-        <button onClick={exportExcel} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Export Excel</button>
-      }
+      description="Lihat riwayat mutasi stok"
     >
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">

@@ -24,16 +24,6 @@ export const listMutasi = async (params = {}) => {
   return res.data;
 };
 
-export const exportMutasiExcel = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  // Always resolve to inspect status codes (e.g., 401/403)
-  const res = await axiosInstance.get(
-    `/stok/mutasi/export${query ? `?${query}` : ''}`,
-    { responseType: 'arraybuffer', validateStatus: () => true }
-  );
-  return res;
-};
-
 // Backwards-compat exports (not used anymore)
 export const getAllStok = async () => { throw new Error('Endpoint tidak tersedia. Gunakan getSaldoProduk per produk.'); };
 export const updateStok = async () => { throw new Error('Endpoint tidak tersedia. Gunakan createMutasi untuk penyesuaian.'); };

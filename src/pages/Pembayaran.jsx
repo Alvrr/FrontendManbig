@@ -1,13 +1,12 @@
 // pages/Pembayaran.jsx
 import React, { useEffect, useState } from "react";
-import { decodeJWT } from "../utils/jwtDecode";
-import { getAllPembayaran, createPembayaran } from "../services/pembayaranAPI";
+import { useAuth } from "../hooks/useAuth";
+import { getAllPembayaran, createPembayaran, selesaikanPembayaran } from "../services/pembayaranAPI";
 import { listTransaksi } from "../services/transaksiAPI";
 import { getAllPelanggan } from "../services/pelangganAPI";
 import { getAllDrivers } from "../services/driverAPI";
-import { createPengiriman } from "../services/pengirimanAPI";
+import { createPengiriman, listPengiriman } from "../services/pengirimanAPI";
 import Swal from "sweetalert2";
-import axiosInstance from "../services/axiosInstance";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/Card";
 import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -15,16 +14,13 @@ import { formatRupiah } from "../utils/currency";
 
 const Pembayaran = () => {
   const [pembayaran, setPembayaran] = useState([]);
-  const [user, setUser] = useState({ role: '', id: '' });
+  const { user: authUser, authKey } = useAuth();
   const [transaksiList, setTransaksiList] = useState([]);
   const [pelangganList, setPelangganList] = useState([]);
   const [driverList, setDriverList] = useState([]);
-  const [baseTotal, setBaseTotal] = useState(0); // total transaksi sebelum ongkir
-  const [ongkir, setOngkir] = useState(0); // ongkir berdasarkan kendaraan
   const [form, setForm] = useState({
     transaksi_id: "",
     metode: "cash",
-    total_bayar: 0,
     delivery: false,
     jenis_kendaraan: "mobil",
     driver_id: "",
@@ -33,23 +29,32 @@ const Pembayaran = () => {
   const [searchId, setSearchId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [trxInPengiriman, setTrxInPengiriman] = useState(new Set());
 
   useEffect(() => {
-    // Ambil role, id, dan nama user dari JWT
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    setUser({ role: decoded?.role || '', id: decoded?.id || '', nama: decoded?.nama || '' });
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setPembayaran([]);
+    setTransaksiList([]);
+    setPelangganList([]);
+    setDriverList([]);
+    setShowPopup(false);
+    setSearchId("");
+    setCurrentPage(1);
+    setTrxInPengiriman(new Set());
+
     fetchPembayaran();
     fetchTransaksi();
     fetchMasters();
     // Disesuaikan: halaman pembayaran mengikuti skema baru
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authKey]);
   const fetchTransaksi = async () => {
     try {
       const data = await listTransaksi();
       // Filter hanya transaksi aktif jika diperlukan
-      const aktif = Array.isArray(data) ? data.filter(t => t && t.status !== 'Selesai') : [];
+      const aktif = Array.isArray(data)
+        ? data.filter(t => t && (String(t.status || '').toLowerCase() !== 'selesai') && (String(t.status || '').toLowerCase() !== 'batal'))
+        : [];
       setTransaksiList(aktif);
     } catch (e) {
       console.error('Gagal fetch transaksi:', e);
@@ -67,44 +72,36 @@ const Pembayaran = () => {
   };
 
   const fetchPembayaran = async () => {
-    const data = await getAllPembayaran();
-    console.log('Fetched pembayaran data:', data); // Debug log
-    console.log('Current user:', user); // Debug log
-    setPembayaran(data);
-  };
-
-  // Re-calc ongkir setiap jenis kendaraan berubah atau delivery on/off
-  useEffect(() => {
-    const tarif = form.jenis_kendaraan === 'mobil' ? 25000 : 10000;
-    const currentOngkir = form.delivery ? tarif : 0;
-    setOngkir(currentOngkir);
-  }, [form.delivery, form.jenis_kendaraan]);
-
-  // Saat transaksi berubah, set baseTotal dari transaksi terpilih
-  useEffect(() => {
-    const trx = transaksiList.find(t => t.id === form.transaksi_id);
-    const tot = Number(trx?.total_harga ?? trx?.total ?? 0);
-    setBaseTotal(tot);
-  }, [form.transaksi_id, transaksiList]);
-
-  // Sinkronkan total_bayar otomatis = baseTotal + ongkir
-  useEffect(() => {
-    setForm(f => ({ ...f, total_bayar: Number(baseTotal) + Number(ongkir) }));
-  }, [baseTotal, ongkir]);
-
-  // Hapus seluruh handler terkait produk karena tidak digunakan pada skema baru
-
-  const updateTotalBayar = (val) => {
-    setForm(f => ({ ...f, total_bayar: Number(val) || 0 }));
+    try {
+      const [payData, shipData] = await Promise.all([
+        getAllPembayaran(),
+        listPengiriman().catch(() => []),
+      ]);
+      console.log('Fetched pembayaran data:', payData);
+      // Buat set transaksi_id yang sudah punya pengiriman aktif (status != batal)
+      const shipArr = Array.isArray(shipData) ? shipData : [];
+      const activeShipSet = new Set(
+        shipArr
+          .filter(p => String(p.status || '').toLowerCase() !== 'batal')
+          .map(p => p.transaksi_id)
+          .filter(Boolean)
+      );
+      setTrxInPengiriman(activeShipSet);
+      setPembayaran(payData);
+    } catch (e) {
+      console.error('Gagal fetch pembayaran/pengiriman:', e);
+      const payData = await getAllPembayaran().catch(() => []);
+      setPembayaran(payData);
+    }
   };
 
   const handleSubmit = async () => {
-    // Role check: hanya admin & kasir yang boleh tambah pembayaran
-    if (!["admin", "kasir"].includes(user.role)) {
+    // Role check: hanya kasir yang boleh create (admin read-only)
+    if (authUser?.role !== "kasir") {
       Swal.fire({
         icon: "warning",
         title: "Akses Ditolak",
-        text: "Role Anda tidak diizinkan menambah pembayaran.",
+        text: "Hanya kasir yang diizinkan menambah pembayaran.",
         confirmButtonText: "OK",
         customClass: {
           confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
@@ -114,11 +111,11 @@ const Pembayaran = () => {
       return;
     }
     // Validasi data dasar
-    if (!form.transaksi_id || !form.total_bayar || form.total_bayar <= 0) {
+    if (!form.transaksi_id) {
       await Swal.fire({
         icon: "warning",
         title: "Data tidak lengkap",
-        text: "Pilih transaksi dan isi total bayar dengan benar",
+        text: "Pilih transaksi terlebih dahulu",
         confirmButtonText: "OK",
         customClass: {
           confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
@@ -149,8 +146,8 @@ const Pembayaran = () => {
       const data = {
         transaksi_id: form.transaksi_id,
         metode: form.metode,
-        total_bayar: Number(baseTotal) + Number(ongkir),
-        status: "pending",
+        delivery: Boolean(form.delivery),
+        jenis_kendaraan: form.jenis_kendaraan,
       };
 
       console.log('Data pembayaran yang akan disimpan:', data);
@@ -170,7 +167,6 @@ const Pembayaran = () => {
             transaksi_id: form.transaksi_id,
             driver_id: form.driver_id,
             jenis: form.jenis_kendaraan,
-            ongkir: Number(ongkir),
           });
         } catch (e) {
           console.warn('Gagal membuat pengiriman:', e?.response?.data || e);
@@ -190,9 +186,7 @@ const Pembayaran = () => {
 
       fetchPembayaran();
       setShowPopup(false);
-      setForm({ transaksi_id: "", metode: "cash", total_bayar: 0, delivery: false, jenis_kendaraan: "mobil", driver_id: "" });
-      setBaseTotal(0);
-      setOngkir(0);
+      setForm({ transaksi_id: "", metode: "cash", delivery: false, jenis_kendaraan: "mobil", driver_id: "" });
     } catch (error) {
       console.error('Error saat menyimpan pembayaran:', error.response?.data || error.message);
       Swal.fire({
@@ -209,28 +203,12 @@ const Pembayaran = () => {
   };
 
   const handleSelesai = async (item) => {
-    // Role yang boleh: admin, kasir, driver (driver hanya untuk transaksi miliknya)
-    if (
-      user.role === "driver" && item.id_driver !== user.id
-    ) {
+    // Hanya kasir yang boleh selesaikan (admin read-only)
+    if (authUser?.role !== "kasir") {
       Swal.fire({
         icon: "warning",
         title: "Akses Ditolak",
-        text: "Driver hanya bisa menyelesaikan transaksi miliknya.",
-        confirmButtonText: "OK",
-        customClass: {
-          confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
-        },
-        buttonsStyling: false,
-      });
-      return;
-    }
-
-    if (!["admin", "kasir", "driver"].includes(user.role)) {
-      Swal.fire({
-        icon: "warning",
-        title: "Akses Ditolak",
-        text: "Role Anda tidak diizinkan menyelesaikan pembayaran.",
+        text: "Hanya kasir yang diizinkan menyelesaikan pembayaran.",
         confirmButtonText: "OK",
         customClass: {
           confirmButton: "bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600",
@@ -257,7 +235,7 @@ const Pembayaran = () => {
     if (!confirm.isConfirmed) return;
 
     try {
-      await axiosInstance.put(`/pembayaran/selesaikan/${item.id}`);
+      await selesaikanPembayaran(item.id);
       await Swal.fire({
         icon: "success",
         title: "Pembayaran Selesai",
@@ -289,11 +267,15 @@ const Pembayaran = () => {
 
   // Defensive: pembayaran always array
   const pembayaranArr = Array.isArray(pembayaran) ? pembayaran : [];
-  // Filter transaksi aktif (status !== 'Selesai')
-  const transaksiAktif = pembayaranArr.filter(item => item && (item.status || '').toLowerCase() !== 'selesai');
+  // Filter transaksi aktif: sembunyikan 'Selesai' dan 'Batal' saja (tetap tampil meskipun sudah ada pengiriman)
+  const transaksiAktif = pembayaranArr.filter(item => {
+    const st = String(item?.status || '').toLowerCase();
+    const hiddenStatus = st === 'selesai' || st === 'batal';
+    return item && !hiddenStatus;
+  });
   // Filter sesuai role - sama seperti implementasi driver
-  const transaksiTampil = user.role === 'kasir'
-    ? transaksiAktif.filter(item => item && item.kasir_id === user.id)
+  const transaksiTampil = authUser?.role === 'kasir'
+    ? transaksiAktif.filter(item => item && item.kasir_id === authUser?.id)
     : transaksiAktif;
   // Search
   const filteredPembayaran = transaksiTampil.filter((item) =>
@@ -311,13 +293,15 @@ const Pembayaran = () => {
       title="Manajemen Pembayaran" 
       description="Kelola data pembayaran bisnis Anda"
       action={
+        authUser?.role === 'kasir' ? (
         <button
           onClick={() => setShowPopup(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <PlusIcon className="w-5 h-5" />
-          <span>Transaksi Baru</span>
+          <span>Pembayaran Baru</span>
         </button>
+        ) : null
       }
     >
       {/* Search Bar */}
@@ -369,9 +353,9 @@ const Pembayaran = () => {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-white/90">{item.status || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-                      {/* Tombol Selesai - hanya untuk admin, kasir, atau driver yang ditugaskan */}
-                        {(user.role === "admin" || user.role === "kasir") && 
-                        item.status !== "Selesai" && (
+                      {/* Tombol Selesai - hanya untuk kasir */}
+                        {authUser?.role === "kasir" && 
+                        item.status !== "Selesai" && !trxInPengiriman.has(item?.transaksi_id) && (
                         <button
                           onClick={() => handleSelesai(item)}
                           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-medium"
@@ -412,7 +396,7 @@ const Pembayaran = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="card-glass backdrop-blur-md rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-white/10 flex-shrink-0">
-              <h2 className="text-xl font-bold text-white">Transaksi Baru</h2>
+              <h2 className="text-xl font-bold text-white">Pembayaran Transaksi</h2>
             </div>
             
             <div className="p-6 overflow-y-auto flex-1">
@@ -427,29 +411,10 @@ const Pembayaran = () => {
                 <option value="">-- Pilih Transaksi --</option>
                 {transaksiList.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.id} - {t.pelanggan_id || 'unknown'} ({t.status}) • {formatRupiah(t.total_harga || t.total || 0)}
+                    {t.id} - {t.pelanggan_id || 'unknown'} ({t.status})
                   </option>
                 ))}
               </select>
-            </div>
-            {/* Ringkasan total dan ongkir */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Total Transaksi</label>
-                <input className="input-glass w-full px-3 py-2 opacity-70" value={formatRupiah(baseTotal)} readOnly />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Ongkir</label>
-                <input className="input-glass w-full px-3 py-2 opacity-70" value={formatRupiah(ongkir)} readOnly />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Total Bayar</label>
-                <input
-                  className="input-glass w-full px-3 py-2 opacity-70"
-                  value={formatRupiah(form.total_bayar)}
-                  readOnly
-                />
-              </div>
             </div>
             {/* Opsi Delivery */}
             <div className="mb-4">
@@ -505,7 +470,7 @@ const Pembayaran = () => {
                 <option value="qris">QRIS</option>
               </select>
             </div>
-            {/* Total Bayar otomatis dari total transaksi + ongkir */}
+
 
             </div>
             
@@ -514,7 +479,7 @@ const Pembayaran = () => {
                 <button
                   onClick={() => {
                     setShowPopup(false);
-                    setForm({ transaksi_id: "", metode: "cash", total_bayar: 0 });
+                    setForm({ transaksi_id: "", metode: "cash", delivery: false, jenis_kendaraan: "mobil", driver_id: "" });
                   }}
                   className="btn-secondary-glass px-4 py-2 font-medium"
                 >

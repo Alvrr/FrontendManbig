@@ -9,14 +9,15 @@ import { getSaldoProduk } from '../services/stokAPI';
 import { showConfirmAlert, showTimedSuccessAlert, showErrorAlert } from '../utils/alertUtils';
 import { formatRupiah } from '../utils/currency';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { decodeJWT } from '../utils/jwtDecode';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Transaksi() {
+  const { authKey } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [showPopup, setShowPopup] = useState(false);
-  const [form, setForm] = useState({ pelanggan_id: '', kategori_id: '', produk_id: '', jumlah: 1, harga: 0 });
+  const [form, setForm] = useState({ pelanggan_id: '', kategori_id: '', produk_id: '', jumlah: 1 });
   const [pelangganList, setPelangganList] = useState([]);
   const [kategoriList, setKategoriList] = useState([]);
   const [produkList, setProdukList] = useState([]);
@@ -35,10 +36,15 @@ export default function Transaksi() {
   };
 
   useEffect(() => { 
-    load(); 
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    const userId = decoded?.id || '';
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setItems([]);
+    setSearch('');
+    setShowPopup(false);
+    setForm({ pelanggan_id: '', kategori_id: '', produk_id: '', jumlah: 1 });
+    setProdukFiltered([]);
+    setStokNow(0);
+    setCart([]);
+    load();
     (async () => {
       try {
         const [pel, kat, prod] = await Promise.all([
@@ -49,15 +55,11 @@ export default function Transaksi() {
         setPelangganList(Array.isArray(pel) ? pel : []);
         setKategoriList(Array.isArray(kat) ? kat : []);
         setProdukList(Array.isArray(prod) ? prod : []);
-        // Simpan kasir_id ke state form untuk dikirim
-        if (userId) {
-          // no render field, just keep reference
-        }
       } catch (e) {
         // ignore
       }
     })();
-  }, []);
+  }, [authKey]);
 
   useEffect(() => {
     if (!form.kategori_id) {
@@ -113,45 +115,29 @@ export default function Transaksi() {
 
   const addToCart = () => {
     if (!form.produk_id || Number(form.jumlah) <= 0) return showErrorAlert('Pilih produk dan jumlah valid');
-    const harga = Number(selectedProduk?.harga_jual || form.harga || 0);
     const stok = Number(stokNow ?? 0);
     if (form.jumlah > stok) return showErrorAlert('Jumlah melebihi stok tersedia');
     const item = {
       produk_id: form.produk_id,
       nama_produk: selectedProduk?.nama_produk || selectedProduk?.nama || form.produk_id,
-      harga,
-      jumlah: Number(form.jumlah),
-      subtotal: harga * Number(form.jumlah)
+      jumlah: Number(form.jumlah)
     };
     setCart(prev => [...prev, item]);
-    setForm({ ...form, produk_id: '', jumlah: 1, harga: 0 });
+    setForm({ ...form, produk_id: '', jumlah: 1 });
   };
 
   const resetCart = () => setCart([]);
-  const totalProduk = cart.reduce((a, b) => a + b.jumlah, 0);
-  const totalHarga = cart.reduce((a, b) => a + b.subtotal, 0);
 
   const handleCreate = async () => {
     if (!form.pelanggan_id || cart.length === 0) return showErrorAlert('Pelanggan dan item wajib diisi');
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    const kasirId = decoded?.id;
-    if (!kasirId) return showErrorAlert('Tidak menemukan kasir_id dari sesi. Silakan login ulang.');
     try {
-      const created = await createTransaksi({
-        kasir_id: kasirId,
+      await createTransaksi({
         pelanggan_id: form.pelanggan_id,
-        total_produk: totalProduk,
-        total_harga: totalHarga,
-        items: cart.map(i => ({ produk_id: i.produk_id, jumlah: i.jumlah, harga: i.harga }))
+        items: cart.map(i => ({ produk_id: i.produk_id, jumlah: i.jumlah }))
       });
-      // Pastikan status awal 'proses' (jika backend belum set)
-      if (created?.id && created?.status !== 'proses') {
-        try { await updateTransaksi(created.id, { status: 'proses' }); } catch {}
-      }
       showTimedSuccessAlert('Transaksi dibuat');
       setShowPopup(false);
-      setForm({ pelanggan_id: '', kategori_id: '', produk_id: '', jumlah: 1, harga: 0 });
+      setForm({ pelanggan_id: '', kategori_id: '', produk_id: '', jumlah: 1 });
       setCart([]);
       load();
     } catch (e) {
@@ -164,7 +150,7 @@ export default function Transaksi() {
   return (
     <PageWrapper
       title="Transaksi"
-      description="Daftar transaksi (admin/kasir)"
+      description="Daftar transaksi kasir"
       action={
         <button onClick={() => setShowPopup(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
           <PlusIcon className="w-5 h-5" />
@@ -185,7 +171,6 @@ export default function Transaksi() {
               <thead className="thead-glass">
                 <tr>
                   <th className="px-4 py-2 text-left">ID</th>
-                  <th className="px-4 py-2 text-left">Kasir</th>
                   <th className="px-4 py-2 text-left">Pelanggan</th>
                   <th className="px-4 py-2 text-left">Total Produk</th>
                   <th className="px-4 py-2 text-left">Total Harga</th>
@@ -198,7 +183,6 @@ export default function Transaksi() {
                 {dataToDisplay.map(t => (
                   <tr key={t.id} className="row-glass">
                     <td className="px-4 py-2 text-white/90">{t.id}</td>
-                    <td className="px-4 py-2 text-white/90">{t.kasir_id}</td>
                     <td className="px-4 py-2 text-white/90">{t.pelanggan_id}</td>
                     <td className="px-4 py-2 text-white/90">{t.total_produk}</td>
                     <td className="px-4 py-2 text-white/90">{formatRupiah(t.total_harga)}</td>
@@ -278,29 +262,21 @@ export default function Transaksi() {
                     <thead className="thead-glass">
                       <tr>
                         <th className="px-4 py-2 text-left">Produk</th>
-                        <th className="px-4 py-2 text-left">Harga</th>
                         <th className="px-4 py-2 text-left">Jumlah</th>
-                        <th className="px-4 py-2 text-left">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="tbody-glass">
                       {cart.map((i, idx) => (
                         <tr key={idx} className="row-glass">
                           <td className="px-4 py-2 text-white/90">{i.nama_produk}</td>
-                          <td className="px-4 py-2 text-white/90">{formatRupiah(i.harga)}</td>
                           <td className="px-4 py-2 text-white/90">{i.jumlah}</td>
-                          <td className="px-4 py-2 text-white/90">{formatRupiah(i.subtotal)}</td>
                         </tr>
                       ))}
                       {cart.length === 0 && (
-                        <tr><td className="px-4 py-4 text-center text-white/70" colSpan={4}>Belum ada item</td></tr>
+                        <tr><td className="px-4 py-4 text-center text-white/70" colSpan={2}>Belum ada item</td></tr>
                       )}
                     </tbody>
                   </table>
-                </div>
-                <div className="flex justify-end gap-6 px-4 py-3">
-                  <span className="text-sm">Total Produk: <b>{totalProduk}</b></span>
-                  <span className="text-sm">Total Harga: <b>{formatRupiah(totalHarga)}</b></span>
                 </div>
               </Card>
             </div>

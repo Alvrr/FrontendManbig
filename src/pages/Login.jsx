@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { loginService } from "../services/authAPI";
 import { useNavigate, Link } from "react-router-dom";
 import { showSuccessAlert, showErrorAlert } from "../utils/alertUtils";
+import { useAuth } from "../hooks/useAuth";
 // Removed external Lottie dependency to avoid 403 errors
 
 export default function LoginPage({ onLogin }) {
@@ -10,6 +11,7 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setToken } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,6 +19,10 @@ export default function LoginPage({ onLogin }) {
     setError("");
     try {
       const res = await loginService({ email, password });
+      if (res?.token) {
+        // Ensure auth state updates before redirecting to protected routes
+        setToken(res.token);
+      }
       if (onLogin) onLogin(res);
       await showSuccessAlert("Login berhasil");
       navigate("/dashboard"); // redirect ke dashboard

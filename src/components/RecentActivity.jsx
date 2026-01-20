@@ -8,7 +8,7 @@ import {
 import { useActivityLog } from '../hooks/useActivityLog';
 import { ClockIcon, EyeIcon, ChevronRightIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
-const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
+const RecentActivity = ({ maxItems = 5, showStats = true, hideControls = false, privacyMode = 'default', className = "" }) => {
   const [showAll, setShowAll] = useState(false);
   
   const {
@@ -21,7 +21,8 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
   } = useActivityLog({
     autoRefresh: true,
     refreshInterval: 30000, // 30 seconds
-    maxActivities: 50
+    maxActivities: 50,
+    privacyMode
   });
 
   const displayedActivities = showAll ? activities : activities.slice(0, maxItems);
@@ -85,13 +86,15 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
               <ArrowPathIcon className="w-4 h-4 text-white/60 animate-spin" />
             )}
           </div>
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="text-sm text-white/80 hover:text-white flex items-center space-x-1"
-          >
-            <EyeIcon className="w-4 h-4" />
-            <span>{showAll ? 'Lihat Ringkas' : 'Lihat Semua'}</span>
-          </button>
+          {!hideControls && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="text-sm text-white/80 hover:text-white flex items-center space-x-1"
+            >
+              <EyeIcon className="w-4 h-4" />
+              <span>{showAll ? 'Lihat Ringkas' : 'Lihat Semua'}</span>
+            </button>
+          )}
         </div>
         
         {/* Stats */}
@@ -155,7 +158,7 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
                   </div>
                   
                   {/* Additional Details */}
-                  {(activity.details && (activity.details.amount || activity.details.ongkir)) && (
+                  {privacyMode !== 'admin' && (activity.details && (activity.details.amount || activity.details.ongkir)) && (
                     <div className="mt-2 text-xs flex items-center gap-2">
                       {activity.details.amount ? (
                         <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${
@@ -194,16 +197,18 @@ const RecentActivity = ({ maxItems = 5, showStats = true, className = "" }) => {
       </div>
       
       {/* Refresh Button */}
-      <div className="px-6 py-3 bg-white/5 border-t border-white/10">
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="w-full text-sm text-white/80 hover:text-white disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
-        >
-          <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span>{loading ? 'Memperbarui...' : 'Perbarui Aktivitas'}</span>
-        </button>
-      </div>
+      {!hideControls && (
+        <div className="px-6 py-3 bg-white/5 border-t border-white/10">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="w-full text-sm text-white/80 hover:text-white disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+          >
+            <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Memperbarui...' : 'Perbarui Aktivitas'}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

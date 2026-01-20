@@ -1,384 +1,230 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback } from 'react'
-import { getAllProduk } from '../services/produkAPI';
-import { getAllPelanggan } from '../services/pelangganAPI';
-import { getAllPembayaran } from '../services/pembayaranAPI';
-import { listPengiriman } from '../services/pengirimanAPI';
-import { listTransaksi } from '../services/transaksiAPI';
-import { getSaldoProduk, getMutasiByProduk } from '../services/stokAPI';
-import { getBestSellers } from '../services/laporanAPI';
-import { decodeJWT } from '../utils/jwtDecode';
-import Card, { CardGlass } from '../components/Card'
+import { getAllProduk } from '../services/produkAPI'
+import { getAllPelanggan } from '../services/pelangganAPI'
+import { getAllPembayaran } from '../services/pembayaranAPI'
+import { listPengiriman } from '../services/pengirimanAPI'
+import { listTransaksi } from '../services/transaksiAPI'
+import { getBestSellers } from '../services/laporanAPI'
+import { useAuth } from '../hooks/useAuth'
+import { CardGlass } from '../components/Card'
 import RecentActivity from '../components/RecentActivity'
 import { 
-  CubeIcon, 
-  UserGroupIcon, 
-  CreditCardIcon, 
-  ClockIcon,
   ArrowTrendingUpIcon,
   ShoppingBagIcon,
   UsersIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline'
+
+const isSameDay = (ts, now) => {
+  if (!ts) return false
+  const d = new Date(ts)
+  return d.toDateString() === now.toDateString()
+}
+
+const inLast7Days = (ts, now) => {
+  if (!ts) return false
+  const d = new Date(ts)
+  const sevenDaysAgo = new Date(now)
+  sevenDaysAgo.setDate(now.getDate() - 7)
+  return d >= sevenDaysAgo && d <= now
+}
 
 const ModernDashboard = () => {
   const navigate = useNavigate()
-  const [user, setUser] = useState({ role: '', id: '' })
-  const [stats, setStats] = useState({
+  const { user, authKey } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (user?.role === 'gudang') {
+      navigate('/dashboard-gudang', { replace: true })
+    }
+  }, [user?.role, navigate])
+
+  const [adminStats, setAdminStats] = useState({
     totalProduk: 0,
     totalPelanggan: 0,
-    totalPembayaran: 0,
-    totalPendapatan: 0,
-    pembayaranHariIni: 0,
-    produkTerlaris: [],
-    driverPendapatanHariIni: []
+    totalPendapatanToko: 0,
+    totalTransaksi: 0,
+    bestSellers: []
+  })
+
+  const [kasirStats, setKasirStats] = useState({
+    pendapatanHariIni: 0,
+    pendapatanMingguIni: 0,
+    totalTransaksiHariIni: 0,
+    bestSellers: []
+  })
+
+  const [driverStats, setDriverStats] = useState({
+    ongkirHariIni: 0,
+    ongkirMingguIni: 0,
+    pengirimanAktif: 0,
+    pengirimanSelesaiHariIni: 0
   })
 
   const fetchStats = useCallback(async () => {
+    if (!user?.role) return
+    if (user.role === 'gudang') return
+    setLoading(true)
+    setError('')
     try {
-      // Kurangi panggilan API yang di-forbid berdasarkan role
-      const isDriver = user.role === 'driver'
-      const isGudang = user.role === 'gudang'
-      let [produk, pelanggan, pembayaran, pengiriman, transaksi] = await Promise.all([
-        getAllProduk().catch(() => []),
-        isGudang ? Promise.resolve([]) : getAllPelanggan().catch(() => []),
-        (isDriver || isGudang) ? Promise.resolve([]) : getAllPembayaran().catch(() => []),
-        isGudang ? Promise.resolve([]) : listPengiriman().catch(() => []),
-        (isDriver || isGudang) ? Promise.resolve([]) : listTransaksi().catch(() => [])
-      ])
-      // Defensive: if null, set to []
-      produk = Array.isArray(produk) ? produk : [];
-      pelanggan = Array.isArray(pelanggan) ? pelanggan : [];
-      pembayaran = Array.isArray(pembayaran) ? pembayaran : [];
+      const role = user.role
+      const now = new Date()
 
-      // Filter pembayaran berdasarkan role - sama seperti implementasi driver dan kasir
-      let filteredPembayaran = user.role === 'driver'
-        ? pembayaran.filter(item => item && item.id_driver === user.id)
-        : user.role === 'kasir'
-        ? pembayaran.filter(item => item && item.kasir_id === user.id)
-        : pembayaran;
+      if (role === 'admin') {
+        const [produk, pelanggan, transaksi, pembayaran, pengiriman, bestSellers] = await Promise.all([
+          getAllProduk().catch(() => []),
+          getAllPelanggan().catch(() => []),
+          listTransaksi().catch(() => []),
+          getAllPembayaran().catch(() => []),
+          listPengiriman().catch(() => []),
+          getBestSellers(7).catch(() => [])
+        ])
 
-      // Selaraskan dengan laporan: kecualikan ID tertentu (PMB005..PMB001)
-      const excludeIds = new Set(['PMB005','PMB004','PMB003','PMB002','PMB001'])
-      filteredPembayaran = (Array.isArray(filteredPembayaran) ? filteredPembayaran : [])
-        .filter(p => !excludeIds.has(String(p?.id)))
-
-      const totalPendapatanSemua = filteredPembayaran.reduce((sum, item) => sum + (item?.total_bayar || 0), 0)
-
-      // Pisahkan ongkir dari total: ambil ongkir per transaksi dari data pengiriman
-      const ongkirByTransaksi = new Map()
-      ;(Array.isArray(pengiriman) ? pengiriman : []).forEach(s => {
-        if (s?.transaksi_id) {
-          ongkirByTransaksi.set(s.transaksi_id, Number(s.ongkir || 0))
-        }
-      })
-
-      const totalOngkirFiltered = filteredPembayaran.reduce((sum, p) => {
-        const ong = ongkirByTransaksi.get(p.transaksi_id) || 0
-        return sum + ong
-      }, 0)
-
-      const totalPendapatanToko = Math.max(0, totalPendapatanSemua - totalOngkirFiltered)
-      
-      const today = new Date().toISOString().split('T')[0]
-      const pembayaranHariIni = filteredPembayaran.filter(item => {
-        if (item?.tanggal && typeof item.tanggal === 'string') {
-          return item.tanggal.startsWith(today)
-        }
-        if (item?.created_at) {
-          const d = new Date(item.created_at)
-          return d.toDateString() === new Date().toDateString()
-        }
-        return false
-      }).length
-      // Pendapatan kasir minggu ini (7 hari terakhir) tanpa ongkir
-      const now = new Date();
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(now.getDate() - 7);
-      const pembayaranMingguIni = filteredPembayaran.filter(p => {
-        const d = new Date(p.tanggal || p.created_at || now);
-        return d >= sevenDaysAgo && d <= now;
-      });
-      const totalOngkirMingguIni = pembayaranMingguIni.reduce((sum, p) => {
-        const ong = ongkirByTransaksi.get(p.transaksi_id) || 0;
-        return sum + ong;
-      }, 0);
-      const totalBayarMingguIni = pembayaranMingguIni.reduce((sum, p) => sum + (p.total_bayar || 0), 0);
-      const pendapatanTokoMingguIni = Math.max(0, totalBayarMingguIni - totalOngkirMingguIni);
-
-      // Produk terjual hari ini (berdasarkan transaksi.items dan kasir)
-      const transaksiArrKasir = Array.isArray(transaksi) ? transaksi : [];
-      const transaksiKasirHariIni = transaksiArrKasir.filter(t => {
-        const isKasir = !user.id || t.kasir_id === user.id || user.role === 'admin';
-        if (!isKasir) return false;
-        if (t?.tanggal && typeof t.tanggal === 'string') {
-          return t.tanggal.startsWith(today);
-        }
-        if (t?.created_at) {
-          const d = new Date(t.created_at);
-          return d.toDateString() === new Date().toDateString();
-        }
-        return false;
-      });
-      const produkTerjualHariIni = transaksiKasirHariIni.reduce((sum, t) => {
-        const items = Array.isArray(t.items) ? t.items : [];
-        return sum + items.reduce((s, it) => s + (Number(it.jumlah) || 0), 0);
-      }, 0);
-
-      // Hitung transaksi hari ini: berdasarkan field tanggal atau created_at
-      const transaksiArr = Array.isArray(transaksi) ? transaksi : []
-      const todayDateObj = new Date()
-      const transaksiHariIni = transaksiArr.filter(t => {
-        if (t?.tanggal && typeof t.tanggal === 'string') {
-          return t.tanggal.startsWith(today)
-        }
-        if (t?.created_at) {
-          const d = new Date(t.created_at)
-          return d.toDateString() === todayDateObj.toDateString()
-        }
-        return false
-      }).length
-
-      // Hitung produk terlaris: scope ke kasir bila role kasir
-      const produkCount = {}
-      const bayarDenganProduk = filteredPembayaran.filter(p => Array.isArray(p?.produk) && p.produk.length > 0)
-      if (bayarDenganProduk.length > 0) {
-        bayarDenganProduk.forEach(payment => {
-          payment.produk.forEach(item => {
-            const key = item?.nama_produk || item?.id_produk
-            if (!key) return;
-            produkCount[key] = (produkCount[key] || 0) + (item?.jumlah || 1)
-          })
+        const ongkirByTrx = new Map()
+        ;(Array.isArray(pengiriman) ? pengiriman : []).forEach((p) => {
+          if (p?.transaksi_id) ongkirByTrx.set(p.transaksi_id, Number(p.ongkir || 0))
         })
-      } else {
-        const transaksiScope = (Array.isArray(transaksi) ? transaksi : []).filter(t => (
-          user.role !== 'kasir' || t.kasir_id === user.id
-        ))
-        transaksiScope.forEach(t => {
-          if (Array.isArray(t?.items)) {
-            t.items.forEach(item => {
-              const key = item?.nama_produk || item?.produk_id
-              if (!key) return;
-              produkCount[key] = (produkCount[key] || 0) + (item?.jumlah || 1)
-            })
-          }
-        })
-      }
 
-      const produkTerlaris = Object.entries(produkCount)
-        .map(([nama, jumlah]) => ({ nama, jumlah }))
-        .sort((a, b) => b.jumlah - a.jumlah)
-        .slice(0, 5)
-
-      // Pendapatan driver hari ini (admin melihat semua)
-      let driverPendapatanHariIni = []
-      if (user.role === 'admin') {
-        const map = {}
-        const todayDate = new Date()
-        ;(Array.isArray(pengiriman) ? pengiriman : []).forEach(p => {
-          if (!p?.created_at || !p?.driver_id) return;
-          const d = new Date(p.created_at)
-          const sameDay = d.toDateString() === todayDate.toDateString()
-          if (sameDay) {
-            map[p.driver_id] = (map[p.driver_id] || 0) + Number(p.ongkir || 0)
-          }
-        })
-        driverPendapatanHariIni = Object.entries(map)
-          .map(([driver_id, total]) => ({ driver_id, total }))
-          .sort((a,b) => b.total - a.total)
-      }
-
-      // KPI khusus driver
-      let driverKPI = {
-        ongkirHariIni: 0,
-        ongkirMingguIni: 0,
-        pengirimanSelesaiHariIni: 0,
-        pengirimanAktif: 0
-      }
-      if (user.role === 'driver') {
-        const allShip = Array.isArray(pengiriman) ? pengiriman : []
-        const shipDriver = allShip.filter(p => p?.driver_id === user.id)
-        const todayDate = new Date()
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(todayDate.getDate() - 7)
-
-        const isSameDay = (ts) => {
-          if (!ts) return false
-          const d = new Date(ts)
-          return d.toDateString() === todayDate.toDateString()
-        }
-        const inLast7Days = (ts) => {
-          if (!ts) return false
-          const d = new Date(ts)
-          return d >= sevenDaysAgo && d <= todayDate
-        }
-
-        const hariIni = shipDriver.filter(p => isSameDay(p.updated_at || p.created_at))
-        const mingguIni = shipDriver.filter(p => inLast7Days(p.updated_at || p.created_at))
-
-        driverKPI.ongkirHariIni = hariIni.reduce((sum, p) => sum + Number(p.ongkir || 0), 0)
-        driverKPI.ongkirMingguIni = mingguIni.reduce((sum, p) => sum + Number(p.ongkir || 0), 0)
-        driverKPI.pengirimanSelesaiHariIni = hariIni.filter(p => String(p.status || '').toLowerCase() === 'selesai').length
-        driverKPI.pengirimanAktif = shipDriver.filter(p => String(p.status || '').toLowerCase() !== 'selesai').length
-      }
-
-      // Gudang KPI: hitung via saldo stok dan mutasi (bukan field stok produk)
-      const produkList = Array.isArray(produk) ? produk : []
-      const threshold = 5
-      let lowStock = []
-      let stockUpdatesToday = []
-      let gudangSaldoMap = {}
-      let produkTerlarisGudang = []
-      if (isGudang) {
-        // Ambil saldo per produk dan mutasi untuk akurasi dashboard gudang
-        const todayDate = new Date()
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(todayDate.getDate() - 7)
-        const entries = await Promise.all(
-          produkList.map(async (p) => {
-            const id = p.id || p._id || p.ID
-            try {
-              const saldo = await getSaldoProduk(id)
-              return [id, saldo?.saldo ?? (p.stok ?? 0)]
-            } catch {
-              return [id, p.stok ?? 0]
-            }
-          })
+        const pembayaranSelesai = (Array.isArray(pembayaran) ? pembayaran : []).filter(
+          (p) => String(p?.status || '').toLowerCase() === 'selesai'
         )
-        gudangSaldoMap = Object.fromEntries(entries)
 
-        // Tentukan low stock berdasarkan saldo terkini
-        lowStock = produkList.filter((p) => {
-          const id = p.id || p._id || p.ID
-          const saldo = Number(gudangSaldoMap[id] ?? 0)
-          return saldo <= threshold
+        const totalPendapatanToko = pembayaranSelesai.reduce((sum, p) => {
+          const total = Number(p?.total_bayar || 0)
+          const ongkir = ongkirByTrx.get(p?.transaksi_id) || 0
+          return sum + Math.max(0, total - ongkir)
+        }, 0)
+
+        setAdminStats({
+          totalProduk: Array.isArray(produk) ? produk.length : 0,
+          totalPelanggan: Array.isArray(pelanggan) ? pelanggan.length : 0,
+          totalPendapatanToko,
+          totalTransaksi: Array.isArray(transaksi) ? transaksi.length : 0,
+          bestSellers: Array.isArray(bestSellers) ? bestSellers : []
+        })
+        return
+      }
+
+      if (role === 'kasir') {
+        // IMPORTANT: data berasal dari API yang sudah ter-scope kasir (server-side)
+        const [transaksi, pembayaran, pengiriman, bestSellers] = await Promise.all([
+          listTransaksi().catch(() => []),
+          getAllPembayaran().catch(() => []),
+          listPengiriman().catch(() => []),
+          getBestSellers(7).catch(() => [])
+        ])
+
+        const ongkirByTrx = new Map()
+        ;(Array.isArray(pengiriman) ? pengiriman : []).forEach((p) => {
+          if (p?.transaksi_id) ongkirByTrx.set(p.transaksi_id, Number(p.ongkir || 0))
         })
 
-        // Kumpulkan mutasi per produk sekali, lalu turunkan metrik yang dibutuhkan
-        const mutasiEntries = await Promise.all(
-          produkList.map(async (p) => {
-            const id = p.id || p._id || p.ID
-            try {
-              const list = await getMutasiByProduk(id)
-              return [id, Array.isArray(list) ? list : []]
-            } catch {
-              return [id, []]
-            }
-          })
+        const pembayaranSelesai = (Array.isArray(pembayaran) ? pembayaran : []).filter(
+          (p) => String(p?.status || '').toLowerCase() === 'selesai'
         )
-        const mutasiMap = Object.fromEntries(mutasiEntries)
 
-        // Update stok hari ini: produk yang memiliki mutasi pada hari ini
-        const todayKey = todayDate.toDateString()
-        stockUpdatesToday = produkList.filter((p) => {
-          const id = p.id || p._id || p.ID
-          const list = mutasiMap[id] || []
-          return list.some((m) => {
-            const d = m?.created_at ? new Date(m.created_at) : null
-            return d && d.toDateString() === todayKey
-          })
-        })
-
-        // Produk terlaris untuk gudang: berdasar mutasi keluar 7 hari terakhir (selaras dengan stok)
-        const produkNameMap = {}
-        produkList.forEach(p => { const id = p.id || p._id || p.ID; produkNameMap[id] = p.nama_produk || id })
-        const countKeluar = {}
-        produkList.forEach((p) => {
-          const id = p.id || p._id || p.ID
-          const list = mutasiMap[id] || []
-          const totalKeluar7Hari = list.reduce((acc, m) => {
-            if (String(m?.jenis).toLowerCase() !== 'keluar') return acc
-            const d = m?.created_at ? new Date(m.created_at) : null
-            if (!d) return acc
-            if (d >= sevenDaysAgo && d <= todayDate) {
-              return acc + Number(m.jumlah || 0)
-            }
-            return acc
+        const pendapatanHariIni = pembayaranSelesai
+          .filter((p) => isSameDay(p?.created_at, now))
+          .reduce((sum, p) => {
+            const total = Number(p?.total_bayar || 0)
+            const ongkir = ongkirByTrx.get(p?.transaksi_id) || 0
+            return sum + Math.max(0, total - ongkir)
           }, 0)
-          if (totalKeluar7Hari > 0) {
-            countKeluar[id] = (countKeluar[id] || 0) + totalKeluar7Hari
-          }
+
+        const pendapatanMingguIni = pembayaranSelesai
+          .filter((p) => inLast7Days(p?.created_at, now))
+          .reduce((sum, p) => {
+            const total = Number(p?.total_bayar || 0)
+            const ongkir = ongkirByTrx.get(p?.transaksi_id) || 0
+            return sum + Math.max(0, total - ongkir)
+          }, 0)
+
+        const totalTransaksiHariIni = (Array.isArray(transaksi) ? transaksi : []).filter((t) =>
+          isSameDay(t?.created_at, now)
+        ).length
+
+        setKasirStats({
+          pendapatanHariIni,
+          pendapatanMingguIni,
+          totalTransaksiHariIni,
+          bestSellers: Array.isArray(bestSellers) ? bestSellers : []
         })
-        produkTerlarisGudang = Object.entries(countKeluar)
-          .map(([pid, jumlah]) => ({ nama: produkNameMap[pid] || pid, jumlah }))
-          .sort((a, b) => b.jumlah - a.jumlah)
-          .slice(0, 5)
+        return
       }
 
-      setStats({
-        totalProduk: produk.length,
-        totalPelanggan: pelanggan.length,
-        totalPembayaran: filteredPembayaran.length,
-        totalPendapatan: totalPendapatanToko,
-        totalOngkir: totalOngkirFiltered,
-        pembayaranHariIni,
-        transaksiHariIni,
-        produkTerlaris: isGudang ? produkTerlarisGudang : produkTerlaris,
-        driverPendapatanHariIni,
-        driverKPI,
-        pendapatanMingguIni: pendapatanTokoMingguIni,
-        produkTerjualHariIni,
-        gudangThreshold: threshold,
-        gudangLowStock: lowStock,
-        gudangStockUpdatesToday: stockUpdatesToday,
-        gudangSaldoMap
-      })
-    } catch (error) {
-      console.error("Error fetching stats:", error)
+      if (role === 'driver') {
+        // IMPORTANT: data berasal dari API yang sudah ter-scope driver (server-side)
+        const pengiriman = await listPengiriman().catch(() => [])
+        const list = Array.isArray(pengiriman) ? pengiriman : []
+
+        const statusLower = (s) => String(s || '').toLowerCase()
+        const ts = (p) => p?.updated_at || p?.created_at
+
+        const ongkirHariIni = list
+          .filter((p) => isSameDay(ts(p), now))
+          .reduce((sum, p) => sum + Number(p?.ongkir || 0), 0)
+
+        const ongkirMingguIni = list
+          .filter((p) => inLast7Days(ts(p), now))
+          .reduce((sum, p) => sum + Number(p?.ongkir || 0), 0)
+
+        const pengirimanSelesaiHariIni = list.filter(
+          (p) => statusLower(p?.status) === 'selesai' && isSameDay(ts(p), now)
+        ).length
+
+        const pengirimanAktif = list.filter((p) => {
+          const st = statusLower(p?.status)
+          return st !== 'selesai' && st !== 'batal'
+        }).length
+
+        setDriverStats({
+          ongkirHariIni,
+          ongkirMingguIni,
+          pengirimanAktif,
+          pengirimanSelesaiHariIni
+        })
+        return
+      }
+    } catch (e) {
+      console.error('Error fetching dashboard stats:', e)
+      setError('Gagal memuat dashboard')
+    } finally {
+      setLoading(false)
     }
-  }, [user.role, user.id])
+  }, [authKey, user?.role])
+
+  // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+  useEffect(() => {
+    setAdminStats({
+      totalProduk: 0,
+      totalPelanggan: 0,
+      totalPendapatanToko: 0,
+      totalTransaksi: 0,
+      bestSellers: []
+    })
+    setKasirStats({
+      pendapatanHariIni: 0,
+      pendapatanMingguIni: 0,
+      totalTransaksiHariIni: 0,
+      bestSellers: []
+    })
+    setDriverStats({
+      ongkirHariIni: 0,
+      ongkirMingguIni: 0,
+      pengirimanAktif: 0,
+      pengirimanSelesaiHariIni: 0
+    })
+    setError('')
+    setLoading(false)
+  }, [authKey])
 
   useEffect(() => {
-    // Ambil role dan id user dari JWT
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    setUser({ role: decoded?.role || '', id: decoded?.id || '' });
-  }, [])
-
-  useEffect(() => {
-    if (user.role) {
-      fetchStats()
-    }
-  }, [user.role, user.id, fetchStats])
-
-  const menuCards = [
-    { 
-      label: 'Produk', 
-      path: '/produk', 
-      icon: CubeIcon,
-      description: 'Kelola data produk',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
-    },
-    { 
-      label: 'Pelanggan', 
-      path: '/pelanggan', 
-      icon: UserGroupIcon,
-      description: 'Kelola data pelanggan',
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200'
-    },
-    { 
-      label: 'Pembayaran', 
-      path: '/pembayaran', 
-      icon: CreditCardIcon,
-      description: 'Kelola transaksi pembayaran',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
-    },
-    { 
-      label: 'Riwayat', 
-      path: '/riwayat', 
-      icon: ClockIcon,
-      description: 'Lihat riwayat transaksi',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200'
-    },
-  ]
+    if (user?.role) fetchStats()
+  }, [authKey, user?.role, fetchStats])
 
   const formatRupiah = (angka) => {
     if (angka >= 1000000000) {
@@ -392,203 +238,117 @@ const ModernDashboard = () => {
     }
   }
 
-  const statsCards = [
-    {
-      title: 'Total Produk',
-      value: stats.totalProduk,
-      icon: ShoppingBagIcon,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-      changeType: 'increase'
-    },
-    {
-      title: 'Total Pelanggan',
-      value: stats.totalPelanggan,
-      icon: UsersIcon,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-      changeType: 'increase'
-    },
-    {
-      title: 'Pendapatan Toko Bulan Ini',
-      value: formatRupiah(stats.totalPendapatan),
-      fullValue: `Rp ${stats.totalPendapatan.toLocaleString('id-ID')}`,
-      icon: BanknotesIcon,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-      changeType: 'increase'
-    },
-    {
-      title: 'Transaksi Hari Ini',
-      value: stats.transaksiHariIni,
-      icon: ArrowTrendingUpIcon,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-      changeType: 'increase'
-    }
-  ]
-  // Sembunyikan kartu tertentu untuk role driver
-  const displayedStatsCards = (user.role === 'driver' || user.role === 'gudang')
-    ? []
-    : statsCards
-  // Khusus kasir: tampilkan KPI kasir
-  const KasirSection = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  const AdminCards = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+      <CardGlass>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/10 p-3 rounded-lg"><ShoppingBagIcon className="w-6 h-6 text-white" /></div>
+          <div>
+            <p className="text-sm text-white/80">Total Produk</p>
+            <p className="text-xl font-semibold text-white">{adminStats.totalProduk}</p>
+          </div>
+        </div>
+      </CardGlass>
+      <CardGlass>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/10 p-3 rounded-lg"><UsersIcon className="w-6 h-6 text-white" /></div>
+          <div>
+            <p className="text-sm text-white/80">Total Pelanggan</p>
+            <p className="text-xl font-semibold text-white">{adminStats.totalPelanggan}</p>
+          </div>
+        </div>
+      </CardGlass>
+      <CardGlass>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/10 p-3 rounded-lg"><BanknotesIcon className="w-6 h-6 text-white" /></div>
+          <div>
+            <p className="text-sm text-white/80">Total Pendapatan Toko</p>
+            <p className="text-xl font-semibold text-white">{formatRupiah(adminStats.totalPendapatanToko)}</p>
+          </div>
+        </div>
+      </CardGlass>
+      <CardGlass>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/10 p-3 rounded-lg"><ArrowTrendingUpIcon className="w-6 h-6 text-white" /></div>
+          <div>
+            <p className="text-sm text-white/80">Total Transaksi</p>
+            <p className="text-xl font-semibold text-white">{adminStats.totalTransaksi}</p>
+          </div>
+        </div>
+      </CardGlass>
+    </div>
+  )
+
+  const KasirCards = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-white">Pendapatan Hari Ini (Toko)</h2>
+          <h2 className="text-lg font-semibold text-white">Pendapatan Hari Ini</h2>
           <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{formatRupiah(stats.totalPendapatan)}</p>
-        <p className="text-sm text-white/70">Tanpa ongkir, milik kasir ini</p>
+        <p className="text-2xl font-bold text-white">{formatRupiah(kasirStats.pendapatanHariIni)}</p>
+        <p className="text-sm text-white/70">Kasir ini saja</p>
       </CardGlass>
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-white">Pendapatan Minggu Ini</h2>
           <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{formatRupiah(stats.pendapatanMingguIni || 0)}</p>
-        <p className="text-sm text-white/70">7 hari terakhir, tanpa ongkir</p>
+        <p className="text-2xl font-bold text-white">{formatRupiah(kasirStats.pendapatanMingguIni)}</p>
+        <p className="text-sm text-white/70">7 hari terakhir</p>
       </CardGlass>
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-white">Produk Terjual Hari Ini</h2>
+          <h2 className="text-lg font-semibold text-white">Transaksi Hari Ini</h2>
+          <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
+        </div>
+        <p className="text-2xl font-bold text-white">{kasirStats.totalTransaksiHariIni}</p>
+        <p className="text-sm text-white/70">Kasir ini saja</p>
+      </CardGlass>
+      <CardGlass>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-white">Produk Terlaris</h2>
           <ShoppingBagIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{stats.produkTerjualHariIni || 0}</p>
-        <p className="text-sm text-white/70">Total item oleh kasir ini</p>
+        <p className="text-sm text-white/70">Versi kasir ini</p>
       </CardGlass>
     </div>
   )
 
-  // Khusus driver: tampilkan KPI driver
-  const DriverSection = () => (
+  const DriverCards = () => (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-white">Ongkir Hari Ini</h2>
           <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{formatRupiah(stats?.driverKPI?.ongkirHariIni || 0)}</p>
-        <p className="text-sm text-white/70">Pengiriman milik Anda</p>
+        <p className="text-2xl font-bold text-white">{formatRupiah(driverStats.ongkirHariIni)}</p>
+        <p className="text-sm text-white/70">Driver ini saja</p>
       </CardGlass>
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-white">Ongkir Minggu Ini</h2>
           <BanknotesIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{formatRupiah(stats?.driverKPI?.ongkirMingguIni || 0)}</p>
+        <p className="text-2xl font-bold text-white">{formatRupiah(driverStats.ongkirMingguIni)}</p>
         <p className="text-sm text-white/70">7 hari terakhir</p>
+      </CardGlass>
+      <CardGlass>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-white">Pengiriman Aktif</h2>
+          <TruckIcon className="w-5 h-5 text-white/60" />
+        </div>
+        <p className="text-2xl font-bold text-white">{driverStats.pengirimanAktif}</p>
+        <p className="text-sm text-white/70">Assigned ke driver ini</p>
       </CardGlass>
       <CardGlass>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-white">Selesai Hari Ini</h2>
           <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
         </div>
-        <p className="text-2xl font-bold text-white">{stats?.driverKPI?.pengirimanSelesaiHariIni || 0}</p>
-        <p className="text-sm text-white/70">Pengiriman Anda dengan status selesai</p>
+        <p className="text-2xl font-bold text-white">{driverStats.pengirimanSelesaiHariIni}</p>
+        <p className="text-sm text-white/70">Driver ini saja</p>
       </CardGlass>
-      <CardGlass>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-white">Pengiriman Aktif</h2>
-          <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
-        </div>
-        <p className="text-2xl font-bold text-white">{stats?.driverKPI?.pengirimanAktif || 0}</p>
-        <p className="text-sm text-white/70">Belum selesai</p>
-      </CardGlass>
-    </div>
-  )
-
-  // Khusus gudang: tampilkan KPI stok
-  const GudangSection = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <CardGlass>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-white">Produk Stok Kritis</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats?.gudangLowStock?.length || 0}</p>
-          <p className="text-sm text-white/70">Stok ≤ {stats?.gudangThreshold}</p>
-        </CardGlass>
-        <CardGlass>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-white">Update Stok Hari Ini</h2>
-            <ArrowTrendingUpIcon className="w-5 h-5 text-white/60" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats?.gudangStockUpdatesToday?.length || 0}</p>
-          <p className="text-sm text-white/70">Produk dengan perubahan stok</p>
-        </CardGlass>
-        <CardGlass>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-white">Total Produk</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.totalProduk}</p>
-          <p className="text-sm text-white/70">Semua produk terdata</p>
-        </CardGlass>
-      </div>
-
-      <CardGlass>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Daftar Restock</h2>
-          <ShoppingBagIcon className="w-5 h-5 text-white/60" />
-        </div>
-        {stats?.gudangLowStock?.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-glass">
-              <thead className="thead-glass">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Produk</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Stok</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider">Rekomendasi</th>
-                </tr>
-              </thead>
-              <tbody className="tbody-glass">
-                {stats.gudangLowStock.map((p) => (
-                  <tr key={p.id} className="row-glass">
-                    <td className="px-4 py-3 text-sm text-white/90">{p.nama || p.nama_produk || p.id}</td>
-                    <td className="px-4 py-3 text-sm text-white/90">{(stats?.gudangSaldoMap && (stats.gudangSaldoMap[p.id] ?? stats.gudangSaldoMap[p._id] ?? stats.gudangSaldoMap[p.ID])) ?? (p.stok ?? p.stock ?? 0)}</td>
-                    <td className="px-4 py-3 text-sm text-white/80">Restock ke {(() => { const sid = p.id || p._id || p.ID; const saldo = Number((stats?.gudangSaldoMap && (stats.gudangSaldoMap[sid])) ?? (p.stok ?? p.stock ?? 0)); return Math.max(saldo, stats.gudangThreshold) + 10; })()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <ShoppingBagIcon className="w-12 h-12 text-white/60 mx-auto mb-3" />
-            <p className="text-white/70">Tidak ada produk stok kritis</p>
-          </div>
-        )}
-      </CardGlass>
-    </div>
-  )
-
-  // Khusus admin: tampilkan pendapatan hari ini (semua), daftar pendapatan driver hari ini
-  const AdminSection = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-white">Pendapatan Driver Hari Ini</h2>
-          <UsersIcon className="w-5 h-5 text-white/60" />
-        </div>
-        {stats.driverPendapatanHariIni.length > 0 ? (
-          <div className="space-y-2">
-            {stats.driverPendapatanHariIni.map((d, i) => (
-              <div key={d.driver_id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white/70">{i+1}.</span>
-                  <span className="text-sm text-white/90">{d.driver_id}</span>
-                </div>
-                <span className="text-sm font-semibold text-white">{formatRupiah(d.total)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-white/70">Belum ada pendapatan driver hari ini</p>
-        )}
-      </Card>
     </div>
   )
 
@@ -596,122 +356,96 @@ const ModernDashboard = () => {
     <div className="space-y-6 text-white">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-white/80">Selamat datang di sistem manajemen bisnis mikro</p>
+          {user?.role === 'admin' ? (
+            <>
+              <h1 className="text-3xl font-bold text-white mb-2">Dashboard Admin</h1>
+              <p className="text-white/80">Monitoring Bisnis (Read-Only)</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+              <p className="text-white/80">Selamat datang di sistem manajemen bisnis mikro</p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        {displayedStatsCards.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <CardGlass key={index} className="hover:shadow-lg transition-shadow duration-200">
-              <div className="flex items-center p-1">
-                <div className={`bg-white/10 p-3 rounded-lg flex-shrink-0`}>
-                  <Icon className={`w-5 h-5 md:w-6 md:h-6 text-white`} />
-                </div>
-                <div className="ml-3 md:ml-4 flex-1 min-w-0">
-                  <p className="text-xs md:text-sm font-medium text-white/80 truncate">{stat.title}</p>
-                  <div className="flex items-center mt-1">
-                    <p 
-                      className="text-base md:text-lg lg:text-xl font-semibold text-white truncate"
-                      title={stat.fullValue || stat.value}
-                    >
-                      {stat.value}
-                    </p>
-                    {stat.change && (
-                      <span className={`ml-2 text-xs md:text-sm font-medium flex-shrink-0 ${
-                        stat.changeType === 'increase' ? 'text-green-300' : 'text-red-300'
-                      }`}>
-                        {stat.change}
-                      </span>
-                    )}
-                  </div>
-                  {stat.fullValue && stat.fullValue !== stat.value && (
-                    <p className="text-xs text-white/70 mt-1 truncate" title={stat.fullValue}>
-                      {stat.fullValue}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardGlass>
-          )
-        })}
-      </div>
+      {error && (
+        <CardGlass>
+          <p className="text-white">{error}</p>
+        </CardGlass>
+      )}
+
+      {loading && !error && (
+        <CardGlass>
+          <p className="text-white/80">Memuat data dashboard...</p>
+        </CardGlass>
+      )}
+
+      {!loading && !error && user.role === 'admin' && <AdminCards />}
+      {!loading && !error && user.role === 'kasir' && <KasirCards />}
+      {!loading && !error && user.role === 'driver' && <DriverCards />}
+      {!loading && !error && user.role === 'gudang' && (
+        <CardGlass>
+          <p className="text-white/80">Dashboard gudang belum didefinisikan pada spesifikasi ini.</p>
+        </CardGlass>
+      )}
 
       {/* Quick Actions removed per request */}
 
-      {/* Admin extra section */}
-      {user.role === 'admin' && (
-        <AdminSection />
-      )}
-
-      {/* Kasir section */}
-      {user.role === 'kasir' && (
-        <KasirSection />
-      )}
-
-      {/* Driver section */}
-      {user.role === 'driver' && (
-        <DriverSection />
-      )}
-
-      {/* Gudang section */}
-      {user.role === 'gudang' && (
-        <GudangSection />
-      )}
-
       {/* Charts Section */}
-      {user.role !== 'driver' && (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Produk Terlaris */}
-        <CardGlass>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Produk Terlaris</h2>
-            <ShoppingBagIcon className="w-5 h-5 text-white/60" />
-          </div>
-          
-          {stats.produkTerlaris.length > 0 ? (
-            <div className="space-y-3">
-              {stats.produkTerlaris.map((produk, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-white">{index + 1}</span>
-                    </div>
-                    <span className="text-sm font-medium text-white/90">{produk.nama}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-24 bg-white/15 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${Math.min((produk.jumlah / stats.produkTerlaris[0]?.jumlah) * 100, 100)}%` 
-                        }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-semibold text-white/90">{produk.jumlah}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <ShoppingBagIcon className="w-12 h-12 text-white/60 mx-auto mb-3" />
-              <p className="text-white/70">Belum ada data penjualan produk</p>
-            </div>
-          )}
-        </CardGlass>
 
-        {/* Recent Activity: tampilkan hanya untuk admin */}
-        {user.role === 'admin' && (
-          <RecentActivity 
-            maxItems={5} 
-            showStats={false}
-            className=""
-          />
-        )}
+      {!loading && !error && (user.role === 'admin' || user.role === 'kasir') && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CardGlass>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Produk Terlaris</h2>
+                <p className="text-xs text-white/70">Berdasarkan jumlah item terjual</p>
+              </div>
+              <ShoppingBagIcon className="w-5 h-5 text-white/60" />
+            </div>
+
+            {(() => {
+              const list = user.role === 'admin' ? adminStats.bestSellers : kasirStats.bestSellers
+              if (!Array.isArray(list) || list.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <ShoppingBagIcon className="w-12 h-12 text-white/60 mx-auto mb-3" />
+                    <p className="text-white/70">Belum ada data penjualan produk</p>
+                  </div>
+                )
+              }
+              const top = list[0]?.jumlah || 1
+              return (
+                <div className="space-y-3">
+                  {list.slice(0, 5).map((p, index) => (
+                    <div key={p.produk_id || p.nama || index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">{index + 1}</span>
+                        </div>
+                        <span className="text-sm font-medium text-white/90">{p.nama}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-24 bg-white/15 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min((Number(p.jumlah || 0) / Number(top)) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-semibold text-white/90">{p.jumlah}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </CardGlass>
+
+          {user.role === 'admin' && (
+            <RecentActivity maxItems={5} showStats={false} hideControls={true} privacyMode="admin" className="" />
+          )}
         </div>
       )}
     </div>

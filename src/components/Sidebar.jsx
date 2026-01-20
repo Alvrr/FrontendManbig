@@ -9,18 +9,15 @@ import {
   UsersIcon,
   TruckIcon
 } from '@heroicons/react/24/outline'
-import { useEffect, useState } from 'react'
-import { decodeJWT } from '../utils/jwtDecode'
+import { useAuth } from '../hooks/useAuth'
 
 const Sidebar = ({ isOpen }) => {
   const location = useLocation()
-  const [userRole, setUserRole] = useState('')
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    const decoded = decodeJWT(token)
-    setUserRole(decoded?.role || '')
-  }, [])
+  // IMPORTANT: role diambil dari auth context (bersumber dari JWT)
+  // agar menu yang tidak diizinkan tidak pernah dirender.
+  const { user } = useAuth()
+  const userRole = user?.role || ''
 
   const menuItems = [
     {
@@ -33,49 +30,56 @@ const Sidebar = ({ isOpen }) => {
       name: 'Produk',
       path: '/produk',
       icon: CubeIcon,
-      roles: ['admin', 'kasir', 'driver', 'gudang']
+      // IMPORTANT: driver tidak boleh lihat menu Produk
+      roles: ['kasir', 'gudang']
     },
     {
       name: 'Pelanggan',
       path: '/pelanggan',
       icon: UserGroupIcon,
-      roles: ['admin', 'kasir']
-    },
-    {
-      name: 'Pembayaran',
-      path: '/pembayaran',
-      icon: CreditCardIcon,
-      roles: ['admin', 'kasir'] // Hanya admin/kasir sesuai backend
-    },
-    {
-      name: 'Pengiriman',
-      path: '/pengiriman',
-      icon: TruckIcon,
-      roles: ['driver', 'admin'] // Driver dan Admin dapat mengakses pengiriman
-    },
-    {
-      name: 'Kategori',
-      path: '/kategori',
-      icon: CubeIcon,
-      roles: ['gudang', 'admin']
-    },
-    {
-      name: 'Stok',
-      path: '/stok',
-      icon: CubeIcon,
-      roles: ['gudang', 'admin']
-    },
-    {
-      name: 'Riwayat Stok',
-      path: '/riwayat-stok',
-      icon: DocumentTextIcon,
-      roles: ['gudang', 'admin']
+      roles: ['kasir']
     },
     {
       name: 'Transaksi',
       path: '/transaksi',
       icon: ClockIcon,
-      roles: ['admin', 'kasir']
+      // IMPORTANT: sesuai aturan UI, transaksi hanya muncul untuk kasir
+      roles: ['kasir']
+    },
+    {
+      name: 'Pembayaran',
+      path: '/pembayaran',
+      icon: CreditCardIcon,
+      // IMPORTANT: admin tidak operasional; pembayaran hanya untuk kasir
+      roles: ['kasir']
+    },
+    {
+      name: 'Pengiriman',
+      path: '/pengiriman',
+      icon: TruckIcon,
+      // IMPORTANT: admin tidak operasional; pengiriman untuk driver (update) & kasir (read-only)
+      roles: ['kasir', 'driver']
+    },
+    {
+      name: 'Kategori',
+      path: '/kategori',
+      icon: CubeIcon,
+      // IMPORTANT: menu gudang tidak boleh bocor ke admin/kasir/driver
+      roles: ['gudang']
+    },
+    {
+      name: 'Stok',
+      path: '/stok',
+      icon: CubeIcon,
+      // IMPORTANT: menu gudang tidak boleh bocor ke admin/kasir/driver
+      roles: ['gudang']
+    },
+    {
+      name: 'Riwayat Stok',
+      path: '/riwayat-stok',
+      icon: DocumentTextIcon,
+      // IMPORTANT: menu gudang tidak boleh bocor ke admin/kasir/driver
+      roles: ['gudang']
     },
     {
       name: 'Laporan',

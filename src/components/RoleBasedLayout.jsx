@@ -1,17 +1,11 @@
-import { useEffect, useState } from 'react'
-import { decodeJWT } from '../utils/jwtDecode'
+import { useAuth } from '../hooks/useAuth'
 import AdminLayout from './AdminLayout'
 import DriverLayout from './DriverLayout'
 import KasirLayout from './KasirLayout'
 
 const RoleBasedLayout = () => {
-  const [userRole, setUserRole] = useState('')
-
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    const decoded = decodeJWT(token)
-    setUserRole(decoded?.role || '')
-  }, [])
+  const { user } = useAuth()
+  const userRole = user?.role || ''
 
   // Render layout berdasarkan role
   switch (userRole) {
@@ -21,6 +15,8 @@ const RoleBasedLayout = () => {
       return <DriverLayout />
     case 'kasir':
       return <KasirLayout />
+    case 'gudang':
+      return <AdminLayout />
     default:
       return <AdminLayout /> // fallback ke admin layout
   }

@@ -5,13 +5,14 @@ import { listPengiriman } from '../services/pengirimanAPI';
 import { getAllPelanggan } from '../services/pelangganAPI';
 import { getAllProduk } from '../services/produkAPI';
 import { getAllKaryawan } from '../services/karyawanAPI';
-import { decodeJWT } from '../utils/jwtDecode';
+import { useAuth } from './useAuth';
 
 export const useActivityLog = (options = {}) => {
   const {
     autoRefresh = false,
     refreshInterval = 30000,
-    maxActivities = 50
+    maxActivities = 50,
+    privacyMode = 'default'
   } = options;
 
   const [activities, setActivities] = useState([]);
@@ -19,14 +20,19 @@ export const useActivityLog = (options = {}) => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  const { user, authKey } = useAuth();
+
+  const formatRupiah = useCallback((amount) => {
+    const n = Number(amount || 0);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
+  }, []);
+
   const fetchActivities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      // Hindari panggilan karyawan untuk non-admin agar tidak mendapat 403
-      const token = localStorage.getItem('token');
-      const decoded = decodeJWT(token);
-      const role = decoded?.role || '';
+      // IMPORTANT: role diambil dari auth context agar tidak stale saat user berganti
+      const role = user?.role || '';
 
       const [pembayaran, transaksi, pengiriman, pelanggan, karyawan, produk] = await Promise.all([
         getAllPembayaran().catch(() => []),
@@ -44,11 +50,7 @@ export const useActivityLog = (options = {}) => {
         if (!shipByTrx.has(s.transaksi_id)) shipByTrx.set(s.transaksi_id, s);
       });
 
-      // Selaraskan dengan laporan: kecualikan ID tertentu (PMB005..PMB001)
-      const excludeIds = new Set(['PMB005','PMB004','PMB003','PMB002','PMB001']);
-
       const activitiesFromPayments = (Array.isArray(pembayaran) ? pembayaran : [])
-        .filter(p => !excludeIds.has(String(p?.id)))
         .map(p => {
           const trx = (Array.isArray(transaksi) ? transaksi : []).find(t => t.id === p.transaksi_id) || {};
           const ship = shipByTrx.get(p.transaksi_id) || {};
@@ -56,8 +58,27 @@ export const useActivityLog = (options = {}) => {
           const kasirNama = karyawanMap.get(trx.kasir_id) || 'Kasir';
           const isSelesai = String(p.status || '').toLowerCase() === 'selesai';
           const tipe = isSelesai ? 'transaction' : 'payment';
-          const title = isSelesai ? 'Transaksi Selesai' : 'Pembayaran Baru';
+          const title = isSelesai ? 'Transaksi Diselesaikan' : 'Pembayaran Diproses';
           const amount = Math.max(0, Number(p.total_bayar || 0) - Number(ship.ongkir || 0));
+
+          if (privacyMode === 'admin') {
+            const kasirId = trx?.kasir_id || '';
+            const userLabel = kasirId ? `kasir ${kasirId}` : 'kasir';
+            const impact = `Total transaksi: ${formatRupiah(amount)}`;
+            const descriptionAdmin = isSelesai
+              ? `1 transaksi berhasil diselesaikan • ${impact}`
+              : `Pembayaran diproses • ${impact}`;
+            return {
+              id: p.id,
+              type: tipe,
+              title,
+              description: descriptionAdmin,
+              user: userLabel,
+              timestamp: p.tanggal || p.created_at || new Date().toISOString(),
+              details: {}
+            };
+          }
+
           const description = isSelesai
             ? `Transaksi untuk ${pelangganNama} berhasil diselesaikan`
             : `Pembayaran untuk pelanggan ${pelangganNama}`;
@@ -80,7 +101,9 @@ export const useActivityLog = (options = {}) => {
           id: `CUST-${c.id}`,
           type: 'customer',
           title: 'Pelanggan Baru Terdaftar',
-          description: `Pelanggan baru: ${c.nama} telah mendaftar ke sistem`,
+          description: privacyMode === 'admin'
+            ? '1 pelanggan baru terdaftar'
+            : `Pelanggan baru: ${c.nama} telah mendaftar ke sistem`,
           user: 'Kasir',
           timestamp: c.created_at,
           details: {}
@@ -112,7 +135,15 @@ export const useActivityLog = (options = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [maxActivities]);
+  }, [maxActivities, authKey, user?.role, privacyMode, formatRupiah]);
+
+  // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+  useEffect(() => {
+    setActivities([]);
+    setError(null);
+    setLastUpdated(null);
+    setLoading(true);
+  }, [authKey]);
 
   const refresh = useCallback(async () => {
     await fetchActivities();

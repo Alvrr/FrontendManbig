@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import RoleBasedLayout from './components/RoleBasedLayout'
 import ModernDashboard from './pages/ModernDashboard'
+import DashboardGudang from './pages/DashboardGudang'
 import Produk from './pages/Produk'
 import Pelanggan from './pages/Pelanggan'
 import Pembayaran from './pages/Pembayaran'
@@ -28,34 +29,55 @@ function App() {
         {/* Semua halaman lain wajib login */}
         <Route element={<ProtectedRoute><RoleBasedLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<ModernDashboard />} />
-          <Route path="/produk" element={<Produk />} />
-          <Route path="/pelanggan" element={<Pelanggan />} />
-          <Route path="/pembayaran" element={<Pembayaran />} />
+          <Route path="/dashboard-gudang" element={
+            <ProtectedRoute requiredRoles={['gudang']}>
+              <DashboardGudang />
+            </ProtectedRoute>
+          } />
+          <Route path="/produk" element={
+            <ProtectedRoute requiredRoles={['gudang']}>
+              <Produk />
+            </ProtectedRoute>
+          } />
+          <Route path="/pelanggan" element={
+            <ProtectedRoute requiredRoles={['kasir']}>
+              <Pelanggan />
+            </ProtectedRoute>
+          } />
+          <Route path="/pembayaran" element={
+            <ProtectedRoute requiredRoles={['kasir']}>
+              <Pembayaran />
+            </ProtectedRoute>
+          } />
           <Route path="/transaksi" element={
-            <ProtectedRoute requiredRoles={['admin','kasir']}>
+            <ProtectedRoute requiredRoles={['kasir']}>
               <Transaksi />
             </ProtectedRoute>
           } />
-          <Route path="/riwayat" element={<Riwayat />} />
+          <Route path="/riwayat" element={
+            <ProtectedRoute requiredRoles={['admin','kasir','driver']}>
+              <Riwayat />
+            </ProtectedRoute>
+          } />
           {/* Halaman Gudang: Kategori dan Stok */}
           <Route path="/kategori" element={
-            <ProtectedRoute requiredRoles={['gudang','admin']}>
+            <ProtectedRoute requiredRoles={['gudang']}>
               <Kategori />
             </ProtectedRoute>
           } />
           <Route path="/stok" element={
-            <ProtectedRoute requiredRoles={['gudang','admin']}>
+            <ProtectedRoute requiredRoles={['gudang']}>
               <Stok />
             </ProtectedRoute>
           } />
           <Route path="/riwayat-stok" element={
-            <ProtectedRoute requiredRoles={['gudang','admin']}>
+            <ProtectedRoute requiredRoles={['gudang']}>
               <RiwayatStok />
             </ProtectedRoute>
           } />
           {/* Pengiriman untuk driver dan admin */}
           <Route path="/pengiriman" element={
-            <ProtectedRoute requiredRoles={['driver','admin']}>
+            <ProtectedRoute requiredRoles={['driver','kasir']}>
               <PengirimanDriver />
             </ProtectedRoute>
           } />

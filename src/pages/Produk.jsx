@@ -1,27 +1,22 @@
 import { useEffect, useState } from "react"
 import {
   getAllProduk,
-  createProduk,
-  updateProduk,
-  deleteProduk,
 } from "../services/produkAPI"
 import { 
   showWarningAlert,
   showErrorAlert,
-  showSuccessAlert,
-  showConfirmAlert
 } from "../utils/alertUtils"
 import PageWrapper from "../components/PageWrapper"
 import Card from "../components/Card"
-import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline"
-import { decodeJWT } from "../utils/jwtDecode"
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
+import { useAuth } from "../hooks/useAuth"
 import { formatRupiah } from "../utils/currency"
 import { getKategori } from "../services/kategoriAPI"
 import { getSaldoProduk } from "../services/stokAPI"
 
 const Produk = () => {
   const [produk, setProduk] = useState([])
-  const [user, setUser] = useState({ role: "" })
+  const { user: authUser, authKey } = useAuth()
   const [searchId, setSearchId] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
   const [kategori, setKategori] = useState([])
@@ -35,9 +30,12 @@ const Produk = () => {
     tanggal: "",
   })
   const [isEdit, setIsEdit] = useState(false)
+  const [isViewOnly, setIsViewOnly] = useState(false)
   const [selectedId, setSelectedId] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
+
+  const isReadOnly = true
 
   const formatIDRInput = (v) => {
     const digits = String(v ?? "").replace(/\D/g, "")
@@ -66,16 +64,21 @@ const Produk = () => {
   }
 
   useEffect(() => {
-    // Ambil role user dari JWT
-    const token = localStorage.getItem("token")
-    const decoded = decodeJWT(token)
-    setUser({ role: decoded?.role || "" })
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setProduk([])
+    setKategori([])
+    setSaldoMap({})
+    setSearchId("")
+    setModalOpen(false)
+    setIsEdit(false)
+    setSelectedId("")
+    setCurrentPage(1)
     fetchData()
-  }, [])
+  }, [authKey])
 
-  const openModal = (item = null) => {
-    if (user.role === "driver") {
-      showWarningAlert("Akses Ditolak", "Role anda dibatasi untuk aksi ini")
+  const openModal = (item = null, mode = 'edit') => {
+    if (mode !== 'view') {
+      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
       return
     }
     if (item) {
@@ -89,7 +92,8 @@ const Produk = () => {
         tanggal: item.created_at ? new Date(item.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
       })
       setSelectedId(item.id)
-      setIsEdit(true)
+      setIsEdit(false)
+      setIsViewOnly(true)
     } else {
       setForm({
         nama_produk: "",
@@ -100,17 +104,18 @@ const Produk = () => {
         tanggal: new Date().toISOString().slice(0,10),
       })
       setIsEdit(false)
+      setIsViewOnly(true)
       setSelectedId("")
     }
     setModalOpen(true)
   }
 
   const handleSubmit = async (e) => {
-    if (user.role === "driver") {
-      showWarningAlert("Akses Ditolak", "Role anda dibatasi untuk aksi ini")
+    e.preventDefault()
+    if (isReadOnly) {
+      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
       return
     }
-    e.preventDefault()
 
     const hargaJualNum = Number(String(form.harga_jual).replace(/\D/g, ""))
     const hargaBeliNum = form.harga_beli === "" ? 0 : Number(String(form.harga_beli).replace(/\D/g, ""))
@@ -169,20 +174,9 @@ const Produk = () => {
   }
 
   const handleDelete = async (id) => {
-    if (user.role === "driver") {
-      showWarningAlert("Akses Ditolak", "Role anda dibatasi untuk aksi ini")
+    if (isReadOnly) {
+      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
       return
-    }
-    const confirm = await showConfirmAlert("Yakin akan menghapus data ini?", "Data yang dihapus tidak dapat dikembalikan!", "Ya, hapus", "Batal")
-
-    if (!confirm.isConfirmed) return
-
-    try {
-      await deleteProduk(id)
-      await showSuccessAlert("Produk berhasil dihapus")
-      fetchData()
-    } catch (e) {
-      showErrorAlert("Gagal", e?.response?.data?.message || e?.message || "Terjadi kesalahan saat menghapus data")
     }
   }
 
@@ -214,19 +208,13 @@ const Produk = () => {
 
   return (
     <PageWrapper 
-      title="Manajemen Produk" 
-      description="Kelola data produk bisnis Anda"
-      action={
-        user.role !== "driver" && (
-          <button
-            onClick={() => openModal()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Tambah Produk</span>
-          </button>
-        )
+      title={
+        <div className="flex items-center gap-2">
+          <span>Manajemen Produk</span>
+          <span className="text-xs px-2 py-1 rounded border border-white/20 bg-white/10 text-white/80">Read Only</span>
+        </div>
       }
+      description="Lihat data produk bisnis Anda"
     >
       {/* Search Bar */}
       <Card className="mb-6">
@@ -274,24 +262,13 @@ const Produk = () => {
                   <td className="px-6 py-4 text-sm text-white/90 max-w-xs truncate">{item.deskripsi}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{formatTanggal(item.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    {user.role !== "driver" && (
-                      <>
-                        <button
-                          onClick={() => openModal(item)}
-                          className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-lg transition-colors"
-                          title="Edit Produk"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
-                          title="Hapus Produk"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={() => openModal(item, 'view')}
+                      className="btn-secondary-glass px-3 py-1"
+                      title="Detail Produk"
+                    >
+                      Detail
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -340,7 +317,7 @@ const Produk = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-white">
-                  {isEdit ? "Edit Produk" : "Tambah Produk"}
+                  {isViewOnly ? "Detail Produk" : (isEdit ? "Edit Produk" : "Tambah Produk")}
                 </h2>
                 <button
                   type="button"
@@ -374,6 +351,7 @@ const Produk = () => {
                   onChange={(e) => setForm({ ...form, nama_produk: e.target.value })}
                   placeholder="Contoh: Smartphone Samsung Galaxy A54"
                   className="input-glass w-full px-3 py-2"
+                  disabled={isViewOnly}
                   required
                 />
               </div>
@@ -384,6 +362,7 @@ const Produk = () => {
                   value={form.kategori_id}
                   onChange={(e) => setForm({ ...form, kategori_id: e.target.value })}
                   className="input-glass w-full px-3 py-2"
+                  disabled={isViewOnly}
                   required
                 >
                   <option value="" disabled>Pilih kategori</option>
@@ -403,6 +382,7 @@ const Produk = () => {
                   onChange={(e) => setForm({ ...form, harga_jual: formatIDRInput(e.target.value) })}
                   placeholder="Masukkan harga jual (contoh: 5.000.000)"
                   className="input-glass w-full px-3 py-2"
+                  disabled={isViewOnly}
                   required
                 />
               </div>
@@ -415,6 +395,7 @@ const Produk = () => {
                   onChange={(e) => setForm({ ...form, harga_beli: formatIDRInput(e.target.value) })}
                   placeholder="Masukkan harga beli (contoh: 5.000.000)"
                   className="input-glass w-full px-3 py-2"
+                  disabled={isViewOnly}
                 />
               </div>
 
@@ -428,6 +409,7 @@ const Produk = () => {
                   placeholder="Deskripsi detail produk, spesifikasi, dan fitur-fitur yang dimiliki..."
                   className="input-glass w-full px-3 py-2"
                   rows="3"
+                  disabled={isViewOnly}
                   required
                 />
               </div>
@@ -449,18 +431,20 @@ const Produk = () => {
                   onClick={() => setModalOpen(false)}
                   className="btn-secondary-glass px-4 py-2 text-sm font-medium"
                 >
-                  Batal
+                  {isViewOnly ? 'Tutup' : 'Batal'}
                 </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isEdit 
-                      ? "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500" 
-                      : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
-                  }`}
-                >
-                  {isEdit ? "Simpan Perubahan" : "Tambah Produk"}
-                </button>
+                {!isViewOnly && (
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isEdit 
+                        ? "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500" 
+                        : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                    }`}
+                  >
+                    {isEdit ? "Simpan Perubahan" : "Tambah Produk"}
+                  </button>
+                )}
               </div>
             </form>
           </div>

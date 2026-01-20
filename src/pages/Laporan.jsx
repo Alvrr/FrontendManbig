@@ -3,8 +3,7 @@ import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-f
 import { id } from "date-fns/locale"
 import Swal from 'sweetalert2'
 import { showWarningAlert, showErrorAlert, showSuccessAlert, showConfirmAlert, swalThemeConfig } from "../utils/alertUtils"
-import axiosInstance from "../services/axiosInstance"
-import { decodeJWT } from "../utils/jwtDecode"
+import { useAuth } from "../hooks/useAuth"
 import { getAllPembayaran } from "../services/pembayaranAPI"
 import { listTransaksi } from "../services/transaksiAPI"
 import { listPengiriman } from "../services/pengirimanAPI"
@@ -24,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline"
 
 function Laporan() {
+  const { user: authUser, authKey } = useAuth()
   const [transaksi, setTransaksi] = useState([])
   const [pelanggan, setPelanggan] = useState([])
   const [loading, setLoading] = useState(false)
@@ -44,11 +44,22 @@ function Laporan() {
   const itemsPerPage = 10
 
   useEffect(() => {
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setTransaksi([])
+    setPelanggan([])
+    setKaryawan([])
+    setDrivers([])
+    setProduk([])
+    setFilterType('all')
+    setCustomDateStart('')
+    setCustomDateEnd('')
+    setSelectedMonth(format(new Date(), 'yyyy-MM'))
+    setSelectedYear(format(new Date(), 'yyyy'))
+    setSearchId('')
+    setCurrentPage(1)
+
     // Check if user is admin
-    const token = localStorage.getItem('token');
-    const decoded = decodeJWT(token);
-    
-    if (decoded?.role !== 'admin') {
+    if (authUser?.role !== 'admin') {
       showWarningAlert("Akses Ditolak", "Halaman laporan hanya dapat diakses oleh admin.").then(() => {
         window.history.back();
       });
@@ -56,7 +67,8 @@ function Laporan() {
     }
     
     fetchData()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authKey, authUser?.role])
 
   const fetchData = async () => {
     setLoading(true)
@@ -217,44 +229,49 @@ function Laporan() {
 
     if (result.isConfirmed) {
       try {
-        // Tentukan parameter periode berdasarkan filter UI
-        let params = {}
+        // Kirim filter AKTIF via query string (backend single source of truth)
+        // Format query:
+        // - custom: start=YYYY-MM-DD&end=YYYY-MM-DD
+        // - month: month=MM&year=YYYY
+        // - year: year=YYYY
+        const params = new URLSearchParams()
         if (filterType === 'custom' && customDateStart && customDateEnd) {
-          params = { start: customDateStart, end: customDateEnd }
+          params.set('start', customDateStart)
+          params.set('end', customDateEnd)
         } else if (filterType === 'month' && selectedMonth) {
           const [year, month] = selectedMonth.split('-')
-          const startDate = startOfMonth(new Date(parseInt(year), parseInt(month) - 1))
-          const endDate = endOfMonth(new Date(parseInt(year), parseInt(month) - 1))
-          params = {
-            start: format(startDate, 'yyyy-MM-dd'),
-            end: format(endDate, 'yyyy-MM-dd')
-          }
+          if (month) params.set('month', month)
+          if (year) params.set('year', year)
         } else if (filterType === 'year' && selectedYear) {
-          const startDate = startOfYear(new Date(parseInt(selectedYear), 0))
-          const endDate = endOfYear(new Date(parseInt(selectedYear), 0))
-          params = {
-            start: format(startDate, 'yyyy-MM-dd'),
-            end: format(endDate, 'yyyy-MM-dd')
-          }
+          params.set('year', selectedYear)
         }
 
-        // Panggil backend Excel export (admin-only)
-        const response = await axiosInstance.get('/laporan/export/excel', {
-          responseType: 'blob',
-          params
-        })
+        // NOTE: karena JWT disimpan di localStorage, window.open tidak bisa mengirim Authorization header.
+        // Backend export endpoint menerima token via query khusus export.
+        const token = localStorage.getItem('token')
+        if (token) params.set('token', token)
 
-        // Buat file .xlsx dari blob
-        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-        const link = document.createElement('a')
-        const url = URL.createObjectURL(blob)
-        link.href = url
-        link.download = `laporan-transaksi-${format(new Date(), 'yyyy-MM-dd')}.xlsx`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000"
+        const url = `${API_URL}/laporan/export/excel${params.toString() ? `?${params.toString()}` : ''}`
+
+        // NOTE: gunakan fetch + blob agar download tidak mengalihkan halaman
+        // dan tidak tergantung popup/window.open (sering diblokir browser).
+        const res = await fetch(url, { method: 'GET' })
+        if (!res.ok) {
+          const text = await res.text().catch(() => '')
+          throw new Error(text || `Gagal ekspor (HTTP ${res.status})`)
+        }
+
+        const blob = await res.blob()
+        const objectUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = objectUrl
+        a.download = 'laporan_mbg.xlsx'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(objectUrl)
+
         showSuccessAlert("Ekspor Berhasil!", "File Excel (.xlsx) berhasil diunduh")
       } catch (error) {
         console.error('Error exporting:', error)

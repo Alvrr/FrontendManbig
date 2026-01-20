@@ -1,16 +1,14 @@
 import { Navigate } from "react-router-dom";
-import { decodeJWT } from '../utils/jwtDecode';
+import { useAuth } from '../hooks/useAuth';
 
 const ProtectedRoute = ({ children, requiredRoles = [] }) => {
-  const token = localStorage.getItem("token");
+  const { token, user } = useAuth();
   
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // Decode JWT untuk mendapatkan informasi user
-  const decoded = decodeJWT(token);
-  const userRole = decoded?.role;
+  const userRole = user?.role;
 
   // Jika ada requiredRoles dan user tidak memiliki role yang diperlukan
   if (requiredRoles.length > 0 && !requiredRoles.includes(userRole)) {

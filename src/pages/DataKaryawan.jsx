@@ -7,8 +7,10 @@ import {
   showWarningAlert
 } from '../utils/alertUtils';
 import { UserPlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, UserGroupIcon, ShieldCheckIcon, TruckIcon, FunnelIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../hooks/useAuth';
 
 const DataKaryawan = () => {
+  const { user, token, authKey } = useAuth();
   const [karyawan, setKaryawan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -31,8 +33,17 @@ const DataKaryawan = () => {
   const itemsPerPage = 5;
 
   useEffect(() => {
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setKaryawan([]);
+    setShowModal(false);
+    setModalMode('create');
+    setSelectedKaryawan(null);
+    setSearch('');
+    setRoleFilter('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
+
     // Check user authentication and role
-    const token = localStorage.getItem('token');
     if (!token) {
       showErrorAlert(
         'Akses Ditolak',
@@ -43,27 +54,19 @@ const DataKaryawan = () => {
       return;
     }
 
-    try {
-      const userData = JSON.parse(atob(token.split('.')[1]));
-      
-      if (userData.role !== 'admin') {
-        showErrorAlert(
-          'Akses Ditolak',
-          'Hanya admin yang dapat mengakses halaman ini'
-        ).then(() => {
-          window.location.href = '/dashboard';
-        });
-        return;
-      }
-    } catch (error) {
-      console.error('Error parsing token:', error);
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    if (user?.role !== 'admin') {
+      showErrorAlert(
+        'Akses Ditolak',
+        'Hanya admin yang dapat mengakses halaman ini'
+      ).then(() => {
+        window.location.href = '/dashboard';
+      });
       return;
     }
 
     fetchKaryawan();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authKey, user?.role, token]);
 
   // Reset ke halaman pertama saat pencarian/filters berubah
   useEffect(() => {

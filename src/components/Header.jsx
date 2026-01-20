@@ -1,23 +1,17 @@
 import { UserCircleIcon, Bars3Icon, ChevronDownIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { decodeJWT } from '../utils/jwtDecode'
-import { logoutService } from '../services/authAPI'
+import { useAuth } from '../hooks/useAuth'
 import { showLogoutConfirmAlert, showTimedSuccessAlert, showErrorAlert } from '../utils/alertUtils'
 
 const Header = ({ toggleSidebar, isSidebarOpen }) => {
-  const [userRole, setUserRole] = useState('')
-  const [userName, setUserName] = useState('')
+  const { user, logout } = useAuth()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    const decoded = decodeJWT(token)
-    setUserRole(decoded?.role || '')
-    setUserName(decoded?.nama || '') // Menggunakan field 'nama' dari JWT token
-  }, [])
+  const userRole = user?.role || ''
+  const userName = user?.nama || ''
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -73,7 +67,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       const result = await showLogoutConfirmAlert()
 
       if (result.isConfirmed) {
-        logoutService()
+        logout()
         await showTimedSuccessAlert(
           'Logout berhasil',
           'Anda telah berhasil keluar'

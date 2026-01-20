@@ -15,11 +15,11 @@ import {
 import PageWrapper from "../components/PageWrapper"
 import Card from "../components/Card"
 import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline"
-import { decodeJWT } from "../utils/jwtDecode"
+import { useAuth } from "../hooks/useAuth"
 
 const Pelanggan = () => {
   const [pelanggan, setPelanggan] = useState([])
-  const [user, setUser] = useState({ role: "" })
+  const { user: authUser, authKey } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
@@ -40,15 +40,18 @@ const Pelanggan = () => {
   }
 
   useEffect(() => {
-    // Ambil role user dari JWT
-    const token = localStorage.getItem("token")
-    const decoded = decodeJWT(token)
-    setUser({ role: decoded?.role || "" })
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setPelanggan([])
+    setSearchTerm("")
+    setModalOpen(false)
+    setIsEdit(false)
+    setSelectedId("")
+    setCurrentPage(1)
     fetchData()
-  }, [])
+  }, [authKey])
 
   const openModal = (item = null) => {
-    if (user.role === "driver") {
+    if (authUser?.role === "driver") {
       showWarningAlert(
         "Akses Ditolak",
         "Role anda dibatasi untuk aksi ini"
@@ -79,7 +82,7 @@ const Pelanggan = () => {
   }
 
   const handleSubmit = async (e) => {
-    if (user.role === "driver") {
+    if (authUser?.role === "driver") {
       showWarningAlert(
         "Akses Ditolak",
         "Role anda dibatasi untuk aksi ini"
@@ -135,7 +138,7 @@ const Pelanggan = () => {
   }
 
   const handleDelete = async (id) => {
-    if (user.role === "driver") {
+    if (authUser?.role === "driver") {
       showWarningAlert(
         "Akses Ditolak",
         "Role anda dibatasi untuk aksi ini"
@@ -180,7 +183,7 @@ const Pelanggan = () => {
       title="Manajemen Pelanggan" 
       description="Kelola data pelanggan bisnis Anda"
       action={
-        user.role !== "driver" && (
+        authUser?.role !== "driver" && (
           <button
             onClick={() => openModal()}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -233,7 +236,7 @@ const Pelanggan = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">{item.no_hp}</td>
                   <td className="px-6 py-4 text-sm text-white/90 max-w-xs truncate">{item.alamat}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    {user.role !== "driver" && (
+                    {authUser?.role !== "driver" && (
                       <>
                         <button
                           onClick={() => openModal(item)}

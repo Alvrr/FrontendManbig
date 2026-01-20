@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { listPengiriman, updatePengiriman, getPengirimanById } from '../services/pengirimanAPI';
-import { showTimedSuccessAlert, showErrorAlert, showConfirmAlert } from '../utils/alertUtils';
-import { getTransaksiById } from '../services/transaksiAPI';
-import { formatRupiah } from '../utils/currency';
+import { showTimedSuccessAlert, showErrorAlert, showConfirmAlert, showInputAlert } from '../utils/alertUtils';
 import { getAllDrivers } from '../services/driverAPI';
-import { getAllKaryawan } from '../services/karyawanAPI';
+import { useAuth } from '../hooks/useAuth';
 
 export default function PengirimanDriver() {
+  const { user: authUser, authKey } = useAuth();
+  const isDriver = authUser?.role === 'driver';
+  const isReadOnly = !isDriver;
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -14,7 +16,6 @@ export default function PengirimanDriver() {
   const [expandedId, setExpandedId] = useState(null);
   const [details, setDetails] = useState({});
   const [driverNamaMap, setDriverNamaMap] = useState({});
-  const [kasirNamaMap, setKasirNamaMap] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -22,7 +23,7 @@ export default function PengirimanDriver() {
     setLoading(true);
     try {
       const data = await listPengiriman();
-      setItems(data);
+      setItems(Array.isArray(data) ? data : []);
       setCurrentPage(1);
       // Enrich: fetch driver list to map driver_id -> nama
       try {
@@ -38,33 +39,6 @@ export default function PengirimanDriver() {
       } catch {
         // ignore
       }
-
-      // Enrich: map transaksi_id -> {namaKasir, kasirId}
-      try {
-        // Build karyawan map once
-        let karyawanMapObj = {};
-        try {
-          const karyawanData = await getAllKaryawan();
-          const arrKar = Array.isArray(karyawanData) ? karyawanData : (karyawanData?.data || []);
-          arrKar.forEach(u => { const id = u?.id || u?._id || u?.ID || u?.username; const nama = u?.nama || u?.name || u?.username || id; if (id) karyawanMapObj[id] = nama; });
-        } catch { /* ignore; fallback to IDs */ }
-
-        const tids = Array.from(new Set((Array.isArray(data) ? data : []).map(x => x.transaksi_id).filter(Boolean)));
-        const entries = await Promise.all(tids.map(async (tid) => {
-          try {
-            const tx = await getTransaksiById(tid);
-            const kasirId = tx?.kasir_id;
-            if (!kasirId) return [tid, { nama: '', id: '' }];
-            const nama = karyawanMapObj[kasirId] || kasirId;
-            return [tid, { nama, id: kasirId }];
-          } catch {
-            return [tid, { nama: '', id: '' }];
-          }
-        }))
-        setKasirNamaMap(Object.fromEntries(entries));
-      } catch {
-        // ignore
-      }
     } catch (e) {
       showErrorAlert('Gagal memuat pengiriman');
     } finally {
@@ -72,15 +46,49 @@ export default function PengirimanDriver() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    // IMPORTANT: reset state ketika user/token berubah (mencegah state terbawa antar user)
+    setItems([]);
+    setQuery("");
+    setStatusFilter("semua");
+    setExpandedId(null);
+    setDetails({});
+    setDriverNamaMap({});
+    setCurrentPage(1);
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authKey]);
   useEffect(() => { setCurrentPage(1); }, [query, statusFilter]);
 
-  const handleUpdateStatus = async (id, next) => {
-    const res = await showConfirmAlert(`Ubah status jadi ${next}?`);
+  const handleUpdateStatus = async (p, next) => {
+    if (!isDriver) {
+      showErrorAlert('Halaman Pengiriman bersifat read-only untuk selain driver');
+      return;
+    }
+
+    // Defense-in-depth: driver hanya boleh update miliknya sendiri
+    if (p?.driver_id && authUser?.id && String(p.driver_id) !== String(authUser.id)) {
+      showErrorAlert('Forbidden: pengiriman bukan milik Anda');
+      return;
+    }
+    // Normalisasi label yang ditampilkan
+    const label = next === 'dikirim' ? 'Sedang Diantarkan' : (next === 'sedang diantarkan' ? 'Sedang Diantarkan' : next);
+    const res = await showConfirmAlert(`Ubah status jadi ${label}?`);
     const ok = res?.isConfirmed;
     if (!ok) return;
     try {
-      await updatePengiriman(id, { status: next });
+      // Jika batal, minta alasan
+      let payload = { status: next };
+      if (next === 'batal') {
+        const input = await showInputAlert('Alasan Pembatalan', 'Masukkan alasan pembatalan', '');
+        const reason = input?.value?.trim();
+        if (!reason) {
+          showErrorAlert('Alasan batal wajib diisi');
+          return;
+        }
+        payload = { status: next, alasan_batal: reason };
+      }
+      await updatePengiriman(p.id, payload);
       showTimedSuccessAlert('Status diperbarui');
       load();
     } catch (e) {
@@ -92,7 +100,7 @@ export default function PengirimanDriver() {
     const key = String(status || '').toLowerCase();
     const cls =
       key === 'diproses' ? 'badge badge-proses' :
-      key === 'dikirim' ? 'badge badge-dikirim' :
+      key === 'dikirim' || key === 'sedang diantarkan' ? 'badge badge-dikirim' :
       key === 'selesai' ? 'badge badge-selesai' :
       key === 'batal' ? 'badge badge-batal' : 'badge border-white/10 text-white/80 bg-white/10';
     return <span className={cls}>{status}</span>;
@@ -139,7 +147,12 @@ export default function PengirimanDriver() {
   return (
     <div className="p-4 text-white">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Pengiriman Saya</h1>
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <span>{isDriver ? 'Pengiriman Saya' : 'Daftar Pengiriman'}</span>
+          {isReadOnly && (
+            <span className="text-xs px-2 py-1 rounded border border-white/20 bg-white/10 text-white/80">Read Only</span>
+          )}
+        </h1>
         <div className="flex gap-2">
           <button className="px-3 py-1 text-sm rounded border border-white/20 bg-white/10 hover:bg-white/20 transition" onClick={load}>Refresh</button>
         </div>
@@ -149,7 +162,7 @@ export default function PengirimanDriver() {
         <select className="input-glass px-3 py-2" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="semua">Semua Status</option>
           <option value="diproses">Diproses</option>
-          <option value="dikirim">Dikirim</option>
+          <option value="sedang diantarkan">Sedang Diantarkan</option>
           <option value="selesai">Selesai</option>
           <option value="batal">Batal</option>
         </select>
@@ -166,15 +179,17 @@ export default function PengirimanDriver() {
                   <div className="font-medium">{p.id}</div>
                   <div className="text-sm text-white/80">Transaksi: {p.transaksi_id}</div>
                   <div className="text-sm text-white/80">Driver: {driverNamaMap[p.driver_id] ? `${driverNamaMap[p.driver_id]} (${p.driver_id})` : (p.driver_id || '-')}</div>
-                  <div className="text-sm text-white/80">Kasir: {kasirNamaMap[p.transaksi_id]?.nama ? `${kasirNamaMap[p.transaksi_id].nama} (${kasirNamaMap[p.transaksi_id].id})` : '-'}</div>
                   <div className="text-sm text-white/90">Jenis: {p.jenis || '-'}</div>
-                  <div className="text-sm text-white/90">Ongkir: {formatRupiah(p.ongkir || 0)}</div>
                   <div className="mt-1">{badge(p.status)}</div>
                 </div>
                 <div className="flex gap-2">
-                <button disabled={!canUpdate(p.status, 'dikirim')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'dikirim') ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'dikirim')}>Kirim</button>
-                <button disabled={!canUpdate(p.status, 'selesai')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'selesai') ? 'bg-green-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'selesai')}>Selesai</button>
-                <button disabled={!canUpdate(p.status, 'batal')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'batal') ? 'bg-red-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p.id, 'batal')}>Batal</button>
+                  {isDriver && (
+                    <>
+                      <button disabled={!canUpdate(p.status, 'sedang diantarkan')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'sedang diantarkan') ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p, 'sedang diantarkan')}>Kirim</button>
+                      <button disabled={!canUpdate(p.status, 'selesai')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'selesai') ? 'bg-green-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p, 'selesai')}>Selesai</button>
+                      <button disabled={!canUpdate(p.status, 'batal')} className={`px-3 py-1 text-sm rounded ${canUpdate(p.status, 'batal') ? 'bg-red-600 text-white' : 'bg-white/10 text-white/50 border border-white/10 cursor-not-allowed'}`} onClick={() => handleUpdateStatus(p, 'batal')}>Batal</button>
+                    </>
+                  )}
                   <button className="px-3 py-1 text-sm rounded border border-white/20 bg-white/10 hover:bg-white/20 transition" onClick={() => toggleDetail(p)}>{expandedId === p.id ? 'Tutup' : 'Detail'}</button>
               </div>
               </div>
@@ -185,7 +200,9 @@ export default function PengirimanDriver() {
                   ) : (
                     <div className="space-y-1">
                       <div><span className="font-medium">Pelanggan:</span> {details[p.id]?.pelanggan_nama || details[p.id]?.pelanggan_id || '-'}</div>
-                      <div><span className="font-medium">Total:</span> {formatRupiah(details[p.id]?.total_toko ?? details[p.id]?.total ?? 0)}</div>
+                      {(String(p.status || '').toLowerCase() === 'batal' || details[p.id]?.alasan_batal) && (
+                        <div><span className="font-medium">Alasan Batal:</span> {details[p.id]?.alasan_batal || '-'}</div>
+                      )}
                         <div className="font-medium">Item:</div>
                         <ul className="list-disc pl-5">
                           {(Array.isArray(details[p.id]?.items) ? details[p.id].items : []).map((it, idx) => (
