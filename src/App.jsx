@@ -35,7 +35,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/produk" element={
-            <ProtectedRoute requiredRoles={['gudang']}>
+            <ProtectedRoute requiredRoles={['gudang', 'kasir']}>
               <Produk />
             </ProtectedRoute>
           } />

@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react"
 import {
   getAllProduk,
+  createProduk,
+  updateProduk,
+  deleteProduk,
 } from "../services/produkAPI"
 import { 
   showWarningAlert,
   showErrorAlert,
+  showConfirmAlert,
+  showSuccessAlert,
 } from "../utils/alertUtils"
 import PageWrapper from "../components/PageWrapper"
 import Card from "../components/Card"
@@ -35,7 +40,9 @@ const Produk = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  const isReadOnly = true
+  const role = authUser?.role || ""
+  const canManageProduk = role === "gudang"
+  const isReadOnly = !canManageProduk
 
   const formatIDRInput = (v) => {
     const digits = String(v ?? "").replace(/\D/g, "")
@@ -77,8 +84,8 @@ const Produk = () => {
   }, [authKey])
 
   const openModal = (item = null, mode = 'edit') => {
-    if (mode !== 'view') {
-      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
+    if (mode !== 'view' && isReadOnly) {
+      showWarningAlert("Akses Ditolak", "Role Anda hanya bisa melihat data produk")
       return
     }
     if (item) {
@@ -92,8 +99,8 @@ const Produk = () => {
         tanggal: item.created_at ? new Date(item.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
       })
       setSelectedId(item.id)
-      setIsEdit(false)
-      setIsViewOnly(true)
+      setIsEdit(mode === 'edit')
+      setIsViewOnly(mode === 'view')
     } else {
       setForm({
         nama_produk: "",
@@ -104,7 +111,7 @@ const Produk = () => {
         tanggal: new Date().toISOString().slice(0,10),
       })
       setIsEdit(false)
-      setIsViewOnly(true)
+      setIsViewOnly(mode === 'view')
       setSelectedId("")
     }
     setModalOpen(true)
@@ -113,7 +120,7 @@ const Produk = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (isReadOnly) {
-      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
+      showWarningAlert("Akses Ditolak", "Role Anda hanya bisa melihat data produk")
       return
     }
 
@@ -175,8 +182,24 @@ const Produk = () => {
 
   const handleDelete = async (id) => {
     if (isReadOnly) {
-      showWarningAlert("Akses Ditolak", "Halaman Produk bersifat read-only")
+      showWarningAlert("Akses Ditolak", "Role Anda hanya bisa melihat data produk")
       return
+    }
+
+    const confirm = await showConfirmAlert(
+      "Yakin akan menghapus produk ini?",
+      "Tindakan ini tidak bisa dibatalkan.",
+      "Ya, hapus",
+      "Batal"
+    )
+    if (!confirm.isConfirmed) return
+
+    try {
+      await deleteProduk(id)
+      await showSuccessAlert("Produk berhasil dihapus")
+      fetchData()
+    } catch (e) {
+      showErrorAlert("Gagal", e?.response?.data?.message || e?.message || "Terjadi kesalahan")
     }
   }
 
@@ -211,14 +234,16 @@ const Produk = () => {
       title={
         <div className="flex items-center gap-2">
           <span>Manajemen Produk</span>
-          <span className="text-xs px-2 py-1 rounded border border-white/20 bg-white/10 text-white/80">Read Only</span>
+          {isReadOnly && (
+            <span className="text-xs px-2 py-1 rounded border border-white/20 bg-white/10 text-white/80">Read Only</span>
+          )}
         </div>
       }
       description="Lihat data produk bisnis Anda"
     >
       {/* Search Bar */}
       <Card className="mb-6">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 justify-between">
           <div className="relative flex-1 max-w-md">
             <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
@@ -232,6 +257,16 @@ const Produk = () => {
               className="input-glass w-full pl-10 pr-4 py-2"
             />
           </div>
+
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={() => openModal(null, 'create')}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              Tambah Produk
+            </button>
+          )}
         </div>
       </Card>
 
@@ -269,6 +304,25 @@ const Produk = () => {
                     >
                       Detail
                     </button>
+
+                    {!isReadOnly && (
+                      <>
+                        <button
+                          onClick={() => openModal(item, 'edit')}
+                          className="btn-secondary-glass px-3 py-1"
+                          title="Edit Produk"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="btn-secondary-glass px-3 py-1"
+                          title="Hapus Produk"
+                        >
+                          Hapus
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
