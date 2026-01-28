@@ -251,7 +251,7 @@ function Laporan() {
         const token = localStorage.getItem('token')
         if (token) params.set('token', token)
 
-        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000"
+        const API_URL = import.meta.env.VITE_API_URL || "https://backendmanbig-production.up.railway.app"
         const url = `${API_URL}/laporan/export/excel${params.toString() ? `?${params.toString()}` : ''}`
 
         // NOTE: gunakan fetch + blob agar download tidak mengalihkan halaman
